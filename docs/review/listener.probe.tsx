@@ -71,6 +71,7 @@ it("R2: removes withdrawn talks from UI eligibility when synchronization complet
       total: 0,
       addedTalks: [],
       addedTeachers: [],
+      removedIds: [1],
     });
   });
   render(<ListenerApp />);

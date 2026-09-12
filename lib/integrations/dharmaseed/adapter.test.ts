@@ -2,6 +2,22 @@ import { describe, expect, it } from "vitest";
 import { parseIndexResponse, parseTalkDetails, parseTeacherDetails } from "./adapter";
 
 describe("Dharma Seed adapter", () => {
+  it("rejects non-HTTP audio URLs at the normalized boundary", () => {
+    expect(() =>
+      parseTalkDetails({
+        edition: "1",
+        items: { "1": { id: 1, audio_url: "javascript:alert(1)" } },
+      }),
+    ).toThrow();
+  });
+  it.each([false, 0, "0", "false"])("keeps nonpublic teacher visibility %s", (visibility) => {
+    expect(
+      parseTeacherDetails({
+        edition: "1",
+        items: { "1": { id: 1, name: "Hidden", public: visibility } },
+      }).items[0]?.isPublic,
+    ).toBe(false);
+  });
   it("maps talk payloads into stable domain records", () => {
     const result = parseTalkDetails({
       edition: "2026-09-12 08:49:06",

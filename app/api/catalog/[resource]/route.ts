@@ -7,9 +7,9 @@ import {
   type DharmaSeedResource,
 } from "@/lib/integrations/dharmaseed/adapter";
 import { requestDharmaSeed } from "@/lib/integrations/dharmaseed/client";
+import { DETAIL_BATCH_SIZE } from "@/lib/catalog/contracts";
 
 const RESOURCES = new Set<DharmaSeedResource>(["talks", "teachers"]);
-const MAX_DETAIL_IDS = 500;
 
 export async function GET(
   request: NextRequest,
@@ -21,6 +21,11 @@ export async function GET(
   }
 
   const resource = rawResource as DharmaSeedResource;
+  const edition = request.nextUrl.searchParams.get("edition") || undefined;
+  const snapshot = request.nextUrl.searchParams.get("snapshot");
+  if ((edition?.length ?? 0) > 100 || (snapshot?.length ?? 0) > 100) {
+    return NextResponse.json({ error: "Edition is too long" }, { status: 400 });
+  }
   const idsResult = parseIds(request.nextUrl.searchParams.get("ids"));
   if (idsResult.error) {
     return NextResponse.json({ error: idsResult.error }, { status: 400 });
@@ -28,7 +33,7 @@ export async function GET(
 
   try {
     const payload = await requestDharmaSeed(resource, {
-      edition: request.nextUrl.searchParams.get("edition") || undefined,
+      edition: idsResult.ids ? undefined : edition,
       ids: idsResult.ids,
     });
 
@@ -40,9 +45,9 @@ export async function GET(
 
     return NextResponse.json(result, {
       headers: {
-        "Cache-Control": idsResult.ids
-          ? "public, s-maxage=86400, stale-while-revalidate=604800"
-          : "public, s-maxage=300, stale-while-revalidate=1800",
+        // IndexedDB and edition deltas own caching; independent CDN lifetimes
+        // cannot safely describe a synchronized catalog snapshot.
+        "Cache-Control": "no-store",
       },
     });
   } catch (error) {
@@ -64,10 +69,10 @@ function parseIds(rawIds: string | null): { ids?: number[]; error?: string } {
 
   if (
     ids.length === 0 ||
-    ids.length > MAX_DETAIL_IDS ||
+    ids.length > DETAIL_BATCH_SIZE ||
     ids.some((id) => !Number.isInteger(id) || id <= 0)
   ) {
-    return { error: `ids must contain 1–${MAX_DETAIL_IDS} positive integers` };
+    return { error: `ids must contain 1–${DETAIL_BATCH_SIZE} positive integers` };
   }
 
   return { ids: [...new Set(ids)] };

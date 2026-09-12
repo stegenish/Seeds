@@ -1,5 +1,15 @@
-import type { RecordingKind } from "./talk";
+import type { RecordingKind, Talk } from "./talk";
 import { TOPICS } from "./topics";
+
+// Bump whenever classification rules or taxonomy identifiers change.
+export const CLASSIFICATION_VERSION = 1;
+export function reclassifyTalk(talk: Talk): Talk {
+  return {
+    ...talk,
+    kind: classifyRecordingKind(talk.recordingType, talk.title, talk.description),
+    topicIds: classifyTopics(talk.title, talk.description),
+  };
+}
 
 const GUIDED_MEDITATION_PATTERNS = [
   /\bguided meditation\b/,

@@ -8,60 +8,21 @@ import {
   putTeachers,
   setMetadata,
 } from "./database";
+import {
+  DETAIL_BATCH_SIZE,
+  indexSchema,
+  isCompatibleEdition,
+  talkDetailsSchema,
+  teacherDetailsSchema,
+  type CatalogResource,
+} from "./contracts";
 
-const DETAIL_BATCH_SIZE = 500;
-
-const indexSchema = z.object({
+const pendingSchema = z.object({
   edition: z.string(),
+  baseEdition: z.string().nullable(),
   ids: z.array(z.number().int().positive()),
-  removedIds: z.array(z.number().int().positive()),
+  completed: z.number().int().nonnegative(),
 });
-
-const talkSchema: z.ZodType<Talk> = z.object({
-  id: z.number().int().positive(),
-  title: z.string(),
-  description: z.string(),
-  recordedAt: z.string().nullable(),
-  durationMinutes: z.number().nullable(),
-  recordingType: z.string(),
-  kind: z.enum(["talk", "guided-meditation", "other"]),
-  topicIds: z.array(z.string()),
-  teacherIds: z.array(z.number().int().positive()),
-  venueId: z.number().nullable(),
-  retreatId: z.number().nullable(),
-  languageId: z.number().nullable(),
-  audioUrl: z.string().url(),
-  sourceUrl: z.string().url(),
-});
-
-const teacherSchema: z.ZodType<Teacher> = z.object({
-  id: z.number().int().positive(),
-  name: z.string(),
-  bio: z.string(),
-  website: z.string().nullable(),
-  donationUrl: z.string().nullable(),
-  photoUrl: z.string().nullable(),
-  isPublic: z.boolean(),
-});
-
-const talkDetailsSchema = z.object({
-  edition: z.string(),
-  items: z.array(talkSchema),
-  removedIds: z.array(z.number().int().positive()),
-});
-
-const teacherDetailsSchema = z.object({
-  edition: z.string(),
-  items: z.array(teacherSchema),
-  removedIds: z.array(z.number().int().positive()),
-});
-
-type CatalogResource = "talks" | "teachers";
-
-interface PendingSync {
-  edition: string;
-  completed: number;
-}
 
 export interface CatalogProgress {
   resource: CatalogResource;
@@ -69,6 +30,7 @@ export interface CatalogProgress {
   total: number;
   addedTalks: Talk[];
   addedTeachers: Teacher[];
+  removedIds: number[];
 }
 
 export interface SyncCatalogOptions {
@@ -78,9 +40,21 @@ export interface SyncCatalogOptions {
 }
 
 export async function syncCatalog(options: SyncCatalogOptions = {}): Promise<void> {
-  const fetcher = options.fetcher ?? fetch;
-  await syncResource("teachers", fetcher, options);
-  await syncResource("talks", fetcher, options);
+  // Serialize across tabs where Web Locks is available. Checkpoints are replay-safe.
+  const synchronize = async () => {
+    const fetcher = options.fetcher ?? fetch;
+    await syncResource("teachers", fetcher, options);
+    await syncResource("talks", fetcher, options);
+  };
+  if (navigator.locks) {
+    await navigator.locks.request(
+      "stillpoint-catalog-sync",
+      { signal: options.signal },
+      synchronize,
+    );
+  } else {
+    await synchronize();
+  }
 }
 
 async function syncResource(
@@ -88,71 +62,89 @@ async function syncResource(
   fetcher: typeof fetch,
   options: SyncCatalogOptions,
 ): Promise<void> {
+  options.signal?.throwIfAborted();
   const editionKey = `${resource}:edition`;
   const pendingKey = `${resource}:pending`;
   const currentEdition = await getMetadata<string>(editionKey);
-  const pending = await getMetadata<PendingSync>(pendingKey);
+  const parsedPending = pendingSchema.safeParse(await getMetadata(pendingKey));
+  const pending = parsedPending.success ? parsedPending.data : null;
   const indexUrl = new URL(`/api/catalog/${resource}`, window.location.origin);
-
-  if (currentEdition && !pending) {
-    indexUrl.searchParams.set("edition", currentEdition);
-  }
-
+  if (currentEdition) indexUrl.searchParams.set("edition", currentEdition);
   const index = indexSchema.parse(await fetchJson(indexUrl, fetcher, options.signal));
-  await deleteCatalogItems(resource, index.removedIds);
-
-  const resumeAt = pending?.edition === index.edition ? pending.completed : 0;
-  const ids = index.ids;
-
-  if (ids.length === 0) {
-    await setMetadata(editionKey, index.edition);
-    await deleteMetadata(pendingKey);
-    options.onProgress?.({
-      resource,
-      completed: 0,
-      total: 0,
-      addedTalks: [],
-      addedTeachers: [],
-    });
-    return;
-  }
-
-  for (let offset = resumeAt; offset < ids.length; offset += DETAIL_BATCH_SIZE) {
-    const batch = ids.slice(offset, offset + DETAIL_BATCH_SIZE);
-    const detailsUrl = new URL(`/api/catalog/${resource}`, window.location.origin);
-    detailsUrl.searchParams.set("ids", batch.join(","));
-    const rawDetails = await fetchJson(detailsUrl, fetcher, options.signal);
-
-    const talkDetails = resource === "talks" ? talkDetailsSchema.parse(rawDetails) : null;
-    const teacherDetails = resource === "teachers" ? teacherDetailsSchema.parse(rawDetails) : null;
-
-    if (talkDetails) {
-      await putTalks(talkDetails.items);
-    }
-    if (teacherDetails) {
-      await putTeachers(teacherDetails.items);
-    }
-
-    const completed = Math.min(offset + batch.length, ids.length);
-    await setMetadata(pendingKey, { edition: index.edition, completed } satisfies PendingSync);
+  // Legacy checkpoints lack a work list and are deliberately replayed from zero.
+  const sameWork =
+    pending?.baseEdition === currentEdition &&
+    pending?.edition === index.edition &&
+    pending.ids.length === index.ids.length &&
+    pending.ids.every((id, i) => id === index.ids[i]);
+  const resumeAt = sameWork ? Math.min(pending.completed, index.ids.length) : 0;
+  const report = (
+    completed: number,
+    removedIds: number[],
+    addedTalks: Talk[] = [],
+    addedTeachers: Teacher[] = [],
+  ) => {
+    options.signal?.throwIfAborted();
     options.onProgress?.({
       resource,
       completed,
-      total: ids.length,
-      addedTalks: talkDetails?.items ?? [],
-      addedTeachers: teacherDetails?.items ?? [],
+      total: index.ids.length,
+      removedIds,
+      addedTalks,
+      addedTeachers,
     });
-  }
+  };
+  options.signal?.throwIfAborted();
+  await deleteCatalogItems(resource, index.removedIds);
+  report(resumeAt, index.removedIds);
 
+  for (let offset = resumeAt; offset < index.ids.length; offset += DETAIL_BATCH_SIZE) {
+    options.signal?.throwIfAborted();
+    const batch = index.ids.slice(offset, offset + DETAIL_BATCH_SIZE);
+    const detailsUrl = new URL(`/api/catalog/${resource}`, window.location.origin);
+    detailsUrl.searchParams.set("ids", batch.join(","));
+    // Bypass old, long-lived CDN entries from the first release.
+    detailsUrl.searchParams.set("snapshot", index.edition);
+    const raw = await fetchJson(detailsUrl, fetcher, options.signal);
+    const details =
+      resource === "talks" ? talkDetailsSchema.parse(raw) : teacherDetailsSchema.parse(raw);
+    if (!isCompatibleEdition(details.edition, index.edition)) {
+      throw new Error("Archive details are out of date. Retry synchronization.");
+    }
+    const returned = new Set([...details.items.map((item) => item.id), ...details.removedIds]);
+    if (batch.some((id) => !returned.has(id))) {
+      throw new Error("The archive returned an incomplete batch. Retry synchronization.");
+    }
+    options.signal?.throwIfAborted();
+    const removed = new Set(details.removedIds);
+    // Deletions win if an inconsistent response contains both forms of a record.
+    const talks =
+      resource === "talks" ? (details.items as Talk[]).filter((item) => !removed.has(item.id)) : [];
+    const teachers =
+      resource === "teachers"
+        ? (details.items as Teacher[]).filter((item) => !removed.has(item.id))
+        : [];
+    await putTalks(talks);
+    await putTeachers(teachers);
+    await deleteCatalogItems(resource, details.removedIds);
+    const completed = offset + batch.length;
+    await setMetadata(pendingKey, {
+      edition: index.edition,
+      baseEdition: currentEdition,
+      ids: index.ids,
+      completed,
+    });
+    report(completed, details.removedIds, talks, teachers);
+  }
+  options.signal?.throwIfAborted();
   await setMetadata(editionKey, index.edition);
   await deleteMetadata(pendingKey);
 }
 
 async function fetchJson(url: URL, fetcher: typeof fetch, signal?: AbortSignal): Promise<unknown> {
-  const response = await fetcher(url, { signal });
-  if (!response.ok) {
-    const body = (await response.json().catch(() => null)) as { error?: string } | null;
-    throw new Error(body?.error || `Catalog request failed with ${response.status}`);
-  }
+  signal?.throwIfAborted();
+  const response = await fetcher(url, { signal, cache: "no-store" });
+  signal?.throwIfAborted();
+  if (!response.ok) throw new Error(`Archive request failed (${response.status}). Please retry.`);
   return response.json();
 }

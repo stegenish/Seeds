@@ -1,5 +1,6 @@
 import { classifyRecordingKind, classifyTopics } from "@/lib/domain/classify";
-import type { Talk, Teacher } from "@/lib/domain/talk";
+import { talkSchema, type Talk, type Teacher } from "@/lib/domain/talk";
+import type { CatalogDetails, CatalogIndex, CatalogResource } from "@/lib/catalog/contracts";
 import {
   remoteDetailResponseSchema,
   remoteIndexResponseSchema,
@@ -9,19 +10,7 @@ import {
 
 const DHARMA_SEED_ORIGIN = "https://www.dharmaseed.org";
 
-export type DharmaSeedResource = "talks" | "teachers";
-
-export interface CatalogIndex {
-  edition: string;
-  ids: number[];
-  removedIds: number[];
-}
-
-export interface CatalogDetails<T> {
-  edition: string;
-  items: T[];
-  removedIds: number[];
-}
+export type DharmaSeedResource = CatalogResource;
 
 export function parseIndexResponse(payload: unknown): CatalogIndex {
   const parsed = remoteIndexResponseSchema.parse(payload);
@@ -52,7 +41,7 @@ function toTalk(remote: ReturnType<typeof remoteTalkSchema.parse>): Talk {
   const description = remote.description ?? "";
   const recordingType = remote.recording_type ?? "";
 
-  return {
+  return talkSchema.parse({
     id: remote.id,
     title: remote.title.trim() || "Untitled recording",
     description: description.trim(),
@@ -67,7 +56,7 @@ function toTalk(remote: ReturnType<typeof remoteTalkSchema.parse>): Talk {
     languageId: remote.language_id ?? null,
     audioUrl,
     sourceUrl: `${DHARMA_SEED_ORIGIN}/talks/${remote.id}/`,
-  };
+  });
 }
 
 function toTeacher(remote: ReturnType<typeof remoteTeacherSchema.parse>): Teacher {

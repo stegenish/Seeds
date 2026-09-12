@@ -66,6 +66,15 @@ export function ListenerApp() {
           signal: controller.signal,
           onProgress(progress) {
             setSyncState({ status: "syncing", progress });
+            if (progress.removedIds.length > 0) {
+              const removed = new Set(progress.removedIds);
+              if (progress.resource === "talks") {
+                setTalks((current) => current.filter((talk) => !removed.has(talk.id)));
+                setCurrentTalk((talk) => (talk && removed.has(talk.id) ? null : talk));
+              } else {
+                setTeachers((current) => current.filter((teacher) => !removed.has(teacher.id)));
+              }
+            }
             if (progress.addedTalks.length > 0) {
               setTalks((current) => mergeById(current, progress.addedTalks));
             }

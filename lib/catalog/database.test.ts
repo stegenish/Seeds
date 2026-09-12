@@ -4,6 +4,7 @@ import {
   deleteCatalogItems,
   getAllTalks,
   getAllTeachers,
+  getDatabase,
   getMetadata,
   putTalks,
   putTeachers,
@@ -16,6 +17,18 @@ afterEach(async () => {
 });
 
 describe("catalog database", () => {
+  it("migrates previously stored classifications locally and records their version", async () => {
+    const db = await getDatabase();
+    await db.put(
+      "talks",
+      makeTalk({ title: "Guided meditation on metta", kind: "other", topicIds: [] }),
+    );
+    await setMetadata("classification-version", 0);
+    expect(await getAllTalks()).toEqual([
+      expect.objectContaining({ kind: "guided-meditation", topicIds: ["loving-kindness"] }),
+    ]);
+    expect(await getMetadata("classification-version")).toBe(1);
+  });
   it("upserts and deletes talks transactionally", async () => {
     await putTalks([makeTalk({ id: 1 }), makeTalk({ id: 2 })]);
     await putTalks([makeTalk({ id: 2, title: "Updated" })]);

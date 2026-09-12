@@ -1,31 +1,41 @@
-export type RecordingKind = "talk" | "guided-meditation" | "other";
+import { z } from "zod";
 
-export interface Talk {
-  id: number;
-  title: string;
-  description: string;
-  recordedAt: string | null;
-  durationMinutes: number | null;
-  recordingType: string;
-  kind: RecordingKind;
-  topicIds: string[];
-  teacherIds: number[];
-  venueId: number | null;
-  retreatId: number | null;
-  languageId: number | null;
-  audioUrl: string;
-  sourceUrl: string;
-}
+export const recordingKindSchema = z.enum(["talk", "guided-meditation", "other"]);
+export type RecordingKind = z.infer<typeof recordingKindSchema>;
+export const positiveId = z.number().int().positive();
+export const httpUrl = z
+  .string()
+  .url()
+  .refine((value) => /^https?:\/\//.test(value));
 
-export interface Teacher {
-  id: number;
-  name: string;
-  bio: string;
-  website: string | null;
-  donationUrl: string | null;
-  photoUrl: string | null;
-  isPublic: boolean;
-}
+export const talkSchema = z.object({
+  id: positiveId,
+  title: z.string(),
+  description: z.string(),
+  recordedAt: z.string().nullable(),
+  durationMinutes: z.number().nonnegative().nullable(),
+  recordingType: z.string(),
+  kind: recordingKindSchema,
+  topicIds: z.array(z.string()),
+  teacherIds: z.array(positiveId),
+  venueId: positiveId.nullable(),
+  retreatId: positiveId.nullable(),
+  languageId: positiveId.nullable(),
+  audioUrl: httpUrl,
+  sourceUrl: httpUrl,
+});
+export type Talk = z.infer<typeof talkSchema>;
+
+export const teacherSchema = z.object({
+  id: positiveId,
+  name: z.string(),
+  bio: z.string(),
+  website: z.string().nullable(),
+  donationUrl: z.string().nullable(),
+  photoUrl: z.string().nullable(),
+  isPublic: z.boolean(),
+});
+export type Teacher = z.infer<typeof teacherSchema>;
 
 export type RecordingKindFilter = "all" | "talk" | "guided-meditation";
 
