@@ -73,3 +73,7 @@ Each feature milestone must pass:
 5. Diff review for duplication, cohesion, factoring, and accidental external-contract leakage.
 
 The final milestone additionally checks the primary flow at narrow Android and desktop viewport sizes and confirms that the live external contract still matches its recorded fixtures.
+
+## Review and continuation
+
+The [2026-09-12 code review](code-review.md) records prioritized findings against commit `bd0b601`, opt-in deterministic reproductions, test-coverage gaps, and a proposed commit-by-commit repair sequence. The review is complete; its proposed fixes have not been implemented.
