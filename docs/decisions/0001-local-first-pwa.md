@@ -23,4 +23,3 @@ The app remains useful while the full archive is being prepared by synchronizing
 - Browser storage can be evicted. Recovery is a repeatable catalog synchronization, while user preferences should be exported later if that becomes important.
 - The integration adapter and contract fixtures must be maintained if Dharma Seed changes its endpoint.
 - Reliable offline audio downloads remain a possible reason to add a native wrapper later; they are not part of this decision.
-

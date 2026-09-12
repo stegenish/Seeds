@@ -11,19 +11,19 @@ Deliver an installable, mobile-first web app that selects a random public Dharma
 - [x] `docs: establish project engineering standards`
   - Define maintainability, testing, review, content, privacy, and Git requirements.
 
-- [ ] `docs: plan the local-first archive architecture`
+- [x] `docs: plan the local-first archive architecture`
   - Record the product semantics, integration boundary, synchronization model, and delivery plan.
 
-- [ ] `build: scaffold the tested installable web app`
+- [x] `build: scaffold the tested installable web app`
   - Add the application shell, pinned toolchain, PWA metadata, formatting, linting, type checking, unit-test setup, and CI.
 
-- [ ] `feat: add the Dharma Seed catalog domain`
+- [x] `feat: add the Dharma Seed catalog domain`
   - Add validated external payload adapters, topic classification, recording-kind classification, random selection, local catalog persistence, incremental synchronization, and unit/integration tests.
 
-- [ ] `feat: build the mobile random-listening experience`
+- [x] `feat: build the mobile random-listening experience`
   - Add the filter workflow, teacher/topic combinations, no-repeat shuffle behavior, selected-talk presentation, persistent player, local playback progress, and component tests.
 
-- [ ] `docs: verify and document the first release`
+- [x] `docs: verify and document the first release`
   - Complete accessibility/responsive review, live read-only contract check, full quality suite, production build, setup/deployment documentation, and final review.
 
 ## Product semantics
@@ -70,4 +70,3 @@ Each feature milestone must pass:
 5. Diff review for duplication, cohesion, factoring, and accidental external-contract leakage.
 
 The final milestone additionally checks the primary flow at narrow Android and desktop viewport sizes and confirms that the live external contract still matches its recorded fixtures.
-
