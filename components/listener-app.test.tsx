@@ -26,6 +26,15 @@ describe("ListenerApp", () => {
     vi.mocked(getAllTeachers).mockResolvedValue([makeTeacher()]);
   });
 
+  it("links to Dharma Seed's official donation page", async () => {
+    render(<ListenerApp />);
+
+    expect(screen.getByRole("link", { name: "Donate to DharmaSeed" })).toHaveAttribute(
+      "href",
+      "https://dharmaseed.org/about/donation/",
+    );
+  });
+
   it("selects from the Dhamma-talk pool and shows attribution", async () => {
     const user = userEvent.setup();
     render(<ListenerApp />);

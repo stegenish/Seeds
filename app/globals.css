@@ -95,6 +95,31 @@ a:focus-visible {
   font-size: 1.25rem;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: clamp(0.6rem, 2vw, 1rem);
+}
+
+.donation-link {
+  color: var(--sun-deep);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-underline-offset: 0.2em;
+  white-space: nowrap;
+}
+
+.donation-link:hover {
+  color: var(--ink);
+}
+
+.donation-link:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--sun) 45%, transparent);
+  outline-offset: 0.2rem;
+  border-radius: 0.15rem;
+}
+
 .catalog-status {
   display: inline-flex;
   align-items: center;
@@ -707,8 +732,20 @@ select {
 }
 
 @media (max-width: 34rem) {
+  .topbar {
+    gap: 0.65rem;
+  }
+
+  .topbar-actions {
+    gap: 0.55rem;
+  }
+
+  .donation-link {
+    font-size: 0.75rem;
+  }
+
   .catalog-status {
-    max-width: 8rem;
+    max-width: 5.5rem;
     text-align: right;
   }
 

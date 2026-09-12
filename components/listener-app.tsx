@@ -19,6 +19,7 @@ import {
 } from "@/lib/user/preferences";
 
 const LICENSE_URL = "https://creativecommons.org/licenses/by-nc-nd/4.0/";
+const DHARMA_SEED_DONATION_URL = "https://dharmaseed.org/about/donation/";
 
 const EMPTY_FILTERS: SelectionFilters = {
   kind: "all",
@@ -142,7 +143,17 @@ export function ListenerApp() {
           </span>
           Stillpoint
         </a>
-        <CatalogStatus state={syncState} talkCount={talks.length} />
+        <div className="topbar-actions">
+          <a
+            className="donation-link"
+            href={DHARMA_SEED_DONATION_URL}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Donate to DharmaSeed
+          </a>
+          <CatalogStatus state={syncState} talkCount={talks.length} />
+        </div>
       </header>
 
       <section className="picker" id="top" aria-labelledby="picker-title">
