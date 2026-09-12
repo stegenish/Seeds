@@ -122,6 +122,21 @@ describe("ListenerApp", () => {
     expect(playSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("R10: exposes hidden restrictions and clears a zero-result refinement", async () => {
+    const user = userEvent.setup();
+    render(<ListenerApp />);
+    await user.click(screen.getByText("Refine the selection"));
+    await user.click(screen.getByText("Duration and language"));
+    await user.selectOptions(screen.getByLabelText("Duration"), "15");
+    await user.selectOptions(screen.getByLabelText("Language"), "");
+    await user.click(screen.getByText("Refine the selection"));
+    expect(screen.getByText(/Any topic · Any teacher · Up to 15 min · Any language/)).toBeVisible();
+    expect(screen.getByRole("button", { name: /Play a Dhamma talk/ })).toBeDisabled();
+    await user.click(screen.getByText("Refine the selection"));
+    await user.click(screen.getByRole("button", { name: "Clear refinements" }));
+    expect(screen.getByRole("button", { name: /Play a Dhamma talk/ })).toBeEnabled();
+  });
+
   it("explains how to recover when the browser blocks the first playback request", async () => {
     const user = userEvent.setup();
     vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(

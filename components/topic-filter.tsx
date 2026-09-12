@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { TOPICS } from "@/lib/domain/topics";
+import { searchTopics } from "@/lib/domain/topics";
 
 export function TopicFilter({
   selectedIds,
@@ -12,18 +12,7 @@ export function TopicFilter({
   onToggle: (id: string) => void;
 }) {
   const [query, setQuery] = useState("");
-  const visibleTopics = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase("en");
-    return [...TOPICS]
-      .sort((left, right) => left.label.localeCompare(right.label))
-      .filter(
-        (topic) =>
-          !normalized ||
-          topic.label.toLocaleLowerCase("en").includes(normalized) ||
-          topic.group.toLocaleLowerCase("en").includes(normalized) ||
-          topic.id.replaceAll("-", " ").includes(normalized),
-      );
-  }, [query]);
+  const visibleTopics = useMemo(() => searchTopics(query), [query]);
 
   return (
     <fieldset>

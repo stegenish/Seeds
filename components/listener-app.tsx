@@ -11,6 +11,7 @@ import { TalkSelection } from "@/components/talk-selection";
 import { TeacherFilter } from "@/components/teacher-filter";
 import { TopicFilter } from "@/components/topic-filter";
 import { useCatalog } from "@/lib/catalog/use-catalog";
+import { formatRefinementSummary } from "@/lib/presentation/refinements";
 import { filterTalks, selectRandomTalk } from "@/lib/domain/selection";
 import type { RecordingKindFilter, SelectionFilters, Talk, Teacher } from "@/lib/domain/talk";
 import {
@@ -295,18 +296,6 @@ export function ListenerApp() {
       ) : null}
     </main>
   );
-}
-
-function formatRefinementSummary(
-  filters: SelectionFilters,
-  teacherName: string | undefined | null,
-): string {
-  const topics =
-    filters.topicIds.length === 0
-      ? "Any topic"
-      : `${filters.topicIds.length} topic${filters.topicIds.length === 1 ? "" : "s"}`;
-  const teacher = teacherName ?? (filters.teacherId === null ? "Any teacher" : "Teacher selected");
-  return `${topics} · ${teacher}`;
 }
 
 function getTeacherNames(talk: Talk, teachers: ReadonlyMap<number, Teacher>): string {

@@ -3,6 +3,7 @@
 import { Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Teacher } from "@/lib/domain/talk";
+import { normalizeText } from "@/lib/domain/text";
 
 export function TeacherFilter({
   teachers,
@@ -16,10 +17,10 @@ export function TeacherFilter({
   const [query, setQuery] = useState("");
   const selectedTeacher = teachers.find((teacher) => teacher.id === selectedId);
   const matches = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase("en");
+    const normalized = normalizeText(query);
     if (!normalized) return [];
     return teachers
-      .filter((teacher) => teacher.name.toLocaleLowerCase("en").includes(normalized))
+      .filter((teacher) => normalizeText(teacher.name).includes(normalized))
       .slice(0, 8);
   }, [query, teachers]);
 

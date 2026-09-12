@@ -1,5 +1,7 @@
 import type { RecordingKind, Talk } from "./talk";
 import { TOPICS } from "./topics";
+import { normalizeText as normalizeForClassification } from "./text";
+export { normalizeText as normalizeForClassification } from "./text";
 
 // Bump whenever classification rules or taxonomy identifiers change.
 export const CLASSIFICATION_VERSION = 1;
@@ -29,17 +31,6 @@ const OTHER_RECORDING_PATTERNS = [
   /\bquestions? (?:and|&) answers?\b/,
   /\bq\s*&\s*a\b/,
 ];
-
-export function normalizeForClassification(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLocaleLowerCase("en")
-    .replace(/[’']/g, "")
-    .replace(/[_/]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 export function classifyRecordingKind(
   recordingType: string,
