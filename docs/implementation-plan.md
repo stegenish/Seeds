@@ -76,4 +76,4 @@ The final milestone additionally checks the primary flow at narrow Android and d
 
 ## Review and continuation
 
-The [2026-09-12 code review](code-review.md) records prioritized findings against commit `bd0b601`, opt-in deterministic reproductions, test-coverage gaps, and a proposed commit-by-commit repair sequence. The review is complete; its proposed fixes have not been implemented.
+The [2026-09-12 code review](code-review.md) records historical findings against commit `bd0b601`. The subsequently authorized fixes are implemented; the [repair journal](repair-progress.md) maps them to Git checkpoints and records final verification. Former opt-in reproductions are now normal regression tests.

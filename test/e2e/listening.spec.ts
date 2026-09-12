@@ -60,6 +60,23 @@ async function fixtures(context: BrowserContext) {
 
 test.beforeEach(async ({ context }) => fixtures(context));
 
+test("active refinements remain readable at narrow phone widths", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  await page.getByText("Refine the selection").click();
+  await page.getByText("Duration and language").click();
+  await page.getByRole("combobox", { name: "Duration", exact: true }).selectOption("15");
+  await page.getByRole("combobox", { name: "Language", exact: true }).selectOption("");
+  await page.getByText("Refine the selection").click();
+  const summary = page.locator(".refine-panel > summary small");
+  await expect(summary).toContainText("Up to 15 min · Any language");
+  expect(await summary.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("normal");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({ path: "test-results/refinement-360.png", fullPage: true });
+});
+
 test("one tap plays audio; refine, reload, next, close, and favorites preserve coherent state", async ({
   page,
 }) => {

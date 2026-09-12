@@ -424,11 +424,10 @@ h1 {
 }
 
 .refine-panel > summary small {
-  overflow: hidden;
   color: var(--ink-soft);
   font-size: 0.74rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .refine-chevron {
