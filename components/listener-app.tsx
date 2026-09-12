@@ -3,15 +3,14 @@
 import { BookOpenText, ChevronDown, Clock3, ExternalLink, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { CatalogStatus, type CatalogSyncState } from "@/components/catalog-status";
+import { CatalogStatus } from "@/components/catalog-status";
 import { FilterSelect } from "@/components/filter-select";
 import { PersistentPlayer, type PersistentPlayerHandle } from "@/components/persistent-player";
 import { QuickListenActions } from "@/components/quick-listen-actions";
 import { TalkSelection } from "@/components/talk-selection";
 import { TeacherFilter } from "@/components/teacher-filter";
 import { TopicFilter } from "@/components/topic-filter";
-import { getAllTalks, getAllTeachers } from "@/lib/catalog/database";
-import { syncCatalog } from "@/lib/catalog/sync";
+import { useCatalog } from "@/lib/catalog/use-catalog";
 import { filterTalks, selectRandomTalk } from "@/lib/domain/selection";
 import type { RecordingKindFilter, SelectionFilters, Talk, Teacher } from "@/lib/domain/talk";
 import {
@@ -35,69 +34,27 @@ const EMPTY_FILTERS: SelectionFilters = {
 };
 
 export function ListenerApp() {
-  const [talks, setTalks] = useState<Talk[]>([]);
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const { talks, teachers, state: syncState, retry } = useCatalog();
   const [filters, setFilters] = useState<SelectionFilters>(EMPTY_FILTERS);
-  const [currentTalk, setCurrentTalk] = useState<Talk | null>(null);
+  const [currentTalkId, setCurrentTalkId] = useState<number | null>(null);
+  const currentTalk = talks.find((talk) => talk.id === currentTalkId) ?? null;
   const [lastPlayedId, setLastPlayedId] = useState<number | null>(null);
   const [history, setHistory] = useState<number[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
-  const [syncState, setSyncState] = useState<CatalogSyncState>({ status: "loading" });
   const [selectionMessage, setSelectionMessage] = useState<string | null>(null);
-  const syncStarted = useRef(false);
   const playerRef = useRef<PersistentPlayerHandle>(null);
 
   useEffect(() => {
-    if (syncStarted.current) return;
-    syncStarted.current = true;
-    const controller = new AbortController();
-
-    async function prepareCatalog() {
-      try {
-        const [storedTalks, storedTeachers] = await Promise.all([getAllTalks(), getAllTeachers()]);
-        setTalks(storedTalks);
-        setTeachers(storedTeachers);
-        setHistory(readSelectionHistory());
-        setFavorites(readFavorites());
-        setLastPlayedId(readLastPlayedTalkId());
-        if (storedTalks.length > 0) setSyncState({ status: "ready" });
-
-        await syncCatalog({
-          signal: controller.signal,
-          onProgress(progress) {
-            setSyncState({ status: "syncing", progress });
-            if (progress.removedIds.length > 0) {
-              const removed = new Set(progress.removedIds);
-              if (progress.resource === "talks") {
-                setTalks((current) => current.filter((talk) => !removed.has(talk.id)));
-                setCurrentTalk((talk) => (talk && removed.has(talk.id) ? null : talk));
-              } else {
-                setTeachers((current) => current.filter((teacher) => !removed.has(teacher.id)));
-              }
-            }
-            if (progress.addedTalks.length > 0) {
-              setTalks((current) => mergeById(current, progress.addedTalks));
-            }
-            if (progress.addedTeachers.length > 0) {
-              setTeachers((current) =>
-                mergeById(current, progress.addedTeachers)
-                  .filter((teacher) => teacher.isPublic)
-                  .sort((a, b) => a.name.localeCompare(b.name)),
-              );
-            }
-          },
-        });
-        setSyncState({ status: "ready" });
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        const message =
-          error instanceof Error ? error.message : "The archive could not be prepared.";
-        setSyncState({ status: "error", message });
-      }
-    }
-
-    void prepareCatalog();
-    return () => controller.abort();
+    let active = true;
+    void Promise.resolve().then(() => {
+      if (!active) return;
+      setHistory(readSelectionHistory());
+      setFavorites(readFavorites());
+      setLastPlayedId(readLastPlayedTalkId());
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const teacherById = useMemo(
@@ -129,7 +86,7 @@ export function ListenerApp() {
 
   function startTalk(talk: Talk) {
     flushSync(() => {
-      setCurrentTalk(talk);
+      setCurrentTalkId(talk.id);
       setLastPlayedId(talk.id);
       setSelectionMessage(null);
     });
@@ -201,7 +158,9 @@ export function ListenerApp() {
         <QuickListenActions
           counts={counts}
           activeKind={currentTalk ? filters.kind : null}
-          isPreparing={talks.length === 0}
+          isPreparing={
+            talks.length === 0 && (syncState.status === "loading" || syncState.status === "syncing")
+          }
           lastTalk={currentTalk ? null : lastPlayedTalk}
           lastTeacherNames={lastPlayedTalk ? getTeacherNames(lastPlayedTalk, teacherById) : ""}
           onListen={playRandom}
@@ -211,6 +170,14 @@ export function ListenerApp() {
         />
 
         {selectionMessage ? <p className="selection-message">{selectionMessage}</p> : null}
+        {syncState.status === "error" ? (
+          <div className="selection-message" role="alert">
+            <p>{syncState.message} Cached recordings remain available.</p>
+            <button type="button" className="clear-button" onClick={retry}>
+              Retry archive sync
+            </button>
+          </div>
+        ) : null}
 
         {currentTalk ? (
           <TalkSelection
@@ -310,7 +277,7 @@ export function ListenerApp() {
           key={currentTalk.id}
           talk={currentTalk}
           teacherNames={getTeacherNames(currentTalk, teacherById)}
-          onClose={() => setCurrentTalk(null)}
+          onClose={() => setCurrentTalkId(null)}
         />
       ) : null}
     </main>
@@ -334,10 +301,4 @@ function getTeacherNames(talk: Talk, teachers: ReadonlyMap<number, Teacher>): st
     .map((teacherId) => teachers.get(teacherId)?.name)
     .filter((name): name is string => Boolean(name));
   return names.length > 0 ? names.join(" & ") : "Teacher attribution loading";
-}
-
-function mergeById<T extends { id: number }>(current: T[], incoming: T[]): T[] {
-  const merged = new Map(current.map((item) => [item.id, item]));
-  for (const item of incoming) merged.set(item.id, item);
-  return [...merged.values()];
 }

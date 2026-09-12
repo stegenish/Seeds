@@ -1,11 +1,5 @@
 import { Check, LoaderCircle } from "lucide-react";
-import type { CatalogProgress } from "@/lib/catalog/sync";
-
-export type CatalogSyncState =
-  | { status: "loading" }
-  | { status: "syncing"; progress: CatalogProgress }
-  | { status: "ready" }
-  | { status: "error"; message: string };
+import type { CatalogSyncState } from "@/lib/catalog/use-catalog";
 
 export function CatalogStatus({
   state,
