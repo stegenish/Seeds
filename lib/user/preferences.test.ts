@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   addSelectionToHistory,
   readFavorites,
+  readLastPlayedTalkId,
   readPlaybackProgress,
   readSelectionHistory,
+  saveLastPlayedTalkId,
   savePlaybackProgress,
   toggleFavorite,
 } from "./preferences";
@@ -27,6 +29,14 @@ describe("local preferences", () => {
     expect(readPlaybackProgress(3)).toBe(18);
     savePlaybackProgress(3, -2);
     expect(readPlaybackProgress(3)).toBe(0);
+  });
+
+  it("remembers the most recently played talk", () => {
+    expect(readLastPlayedTalkId()).toBeNull();
+
+    saveLastPlayedTalkId(42);
+
+    expect(readLastPlayedTalkId()).toBe(42);
   });
 
   it("recovers from malformed storage", () => {

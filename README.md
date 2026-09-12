@@ -7,10 +7,13 @@ The web app is designed to be installed from Chrome on Android and deployed to V
 ## What it does
 
 - Separates Dhamma talks from guided meditations.
+- Starts a Dhamma talk, guided meditation, or any recording with one tap.
 - Classifies overlapping topics using deterministic English, Pali, and Sanskrit terms.
+- Gives every topic equal placement in one searchable, alphabetical list.
 - Combines kind, teacher, language, and duration filters; selected topics use OR semantics.
 - Synchronizes public metadata progressively into IndexedDB and applies later updates incrementally.
 - Stores selection history, favorites, and playback progress only on the device.
+- Offers a direct continuation of the most recently played recording.
 - Streams original, unmodified audio directly from Dharma Seed.
 - Preserves teacher attribution, original-source links, and license information.
 

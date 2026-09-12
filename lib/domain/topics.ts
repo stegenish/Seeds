@@ -263,15 +263,6 @@ export const TOPICS: TopicDefinition[] = [
   },
 ];
 
-export const FEATURED_TOPIC_IDS = [
-  "four-noble-truths",
-  "dependent-origination",
-  "not-self",
-  "loving-kindness",
-  "equanimity",
-  "mindfulness",
-];
-
 export function getTopic(id: string): TopicDefinition | undefined {
   return TOPICS.find((topic) => topic.id === id);
 }

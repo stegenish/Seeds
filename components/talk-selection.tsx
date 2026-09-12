@@ -1,4 +1,4 @@
-import { ExternalLink, Heart, Play, RefreshCw } from "lucide-react";
+import { ExternalLink, Heart, RefreshCw } from "lucide-react";
 import type { Talk } from "@/lib/domain/talk";
 import { getTopic } from "@/lib/domain/topics";
 import { formatDate, formatDuration } from "@/lib/presentation/format";
@@ -8,20 +8,18 @@ export function TalkSelection({
   teacherNames,
   isFavorite,
   onFavorite,
-  onPlay,
-  onChooseAgain,
+  onPlayAnother,
 }: {
   talk: Talk;
   teacherNames: string;
   isFavorite: boolean;
   onFavorite: (id: number) => void;
-  onPlay: (talk: Talk) => void;
-  onChooseAgain: () => void;
+  onPlayAnother: () => void;
 }) {
   return (
     <article className="selection-card" aria-live="polite">
       <div className="selection-kicker">
-        <span>Your teaching</span>
+        <span>Current teaching</span>
         <button
           className={`icon-button ${isFavorite ? "is-favorite" : ""}`}
           type="button"
@@ -48,11 +46,8 @@ export function TalkSelection({
         </div>
       ) : null}
       <div className="selection-actions">
-        <button className="play-button" type="button" onClick={() => onPlay(talk)}>
-          <Play size={19} fill="currentColor" aria-hidden="true" /> Play
-        </button>
-        <button className="again-button" type="button" onClick={onChooseAgain}>
-          <RefreshCw size={17} aria-hidden="true" /> Choose again
+        <button className="again-button" type="button" onClick={onPlayAnother}>
+          <RefreshCw size={17} aria-hidden="true" /> Play another
         </button>
       </div>
       <a className="source-link" href={talk.sourceUrl} target="_blank" rel="noreferrer">

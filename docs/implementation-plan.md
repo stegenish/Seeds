@@ -26,6 +26,9 @@ Deliver an installable, mobile-first web app that selects a random public Dharma
 - [x] `docs: verify and document the first release`
   - Complete accessibility/responsive review, live read-only contract check, full quality suite, production build, setup/deployment documentation, and final review.
 
+- [x] `feat: make listening a one-tap mobile flow`
+  - Put compact play actions first, remove editorially featured topics, make topic and teacher refinements searchable, keep the displayed and playing talk aligned, and offer continuation of the latest recording.
+
 ## Product semantics
 
 ### Recording kinds
@@ -48,7 +51,7 @@ Deliver an installable, mobile-first web app that selects a random public Dharma
 - Selection is uniform over the talks in the eligible pool.
 - Recently selected talks are excluded while alternatives exist.
 - The on-device history behaves like a shuffle bag: it resets only when the current filter pool has been exhausted.
-- The app shows a selection before playback rather than starting audio unexpectedly.
+- Each explicit quick-listen action selects a recording and requests playback in the same tap.
 - A future “broader teacher variety” mode may sample teachers first, but it is outside the first release.
 
 ### Classification

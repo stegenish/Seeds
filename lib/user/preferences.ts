@@ -1,6 +1,7 @@
 const HISTORY_KEY = "stillpoint:selection-history";
 const FAVORITES_KEY = "stillpoint:favorites";
 const PROGRESS_KEY = "stillpoint:playback-progress";
+const LAST_PLAYED_KEY = "stillpoint:last-played-talk";
 const MAX_HISTORY_LENGTH = 2_000;
 
 interface PlaybackProgress {
@@ -46,6 +47,15 @@ export function savePlaybackProgress(
   const progress = readProgressMap(storage);
   progress[talkId] = Math.max(0, Math.floor(seconds));
   storage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+}
+
+export function readLastPlayedTalkId(storage: Storage = localStorage): number | null {
+  const value = Number(storage.getItem(LAST_PLAYED_KEY));
+  return Number.isInteger(value) && value > 0 ? value : null;
+}
+
+export function saveLastPlayedTalkId(talkId: number, storage: Storage = localStorage): void {
+  storage.setItem(LAST_PLAYED_KEY, String(talkId));
 }
 
 function readNumberArray(storage: Storage, key: string): number[] {

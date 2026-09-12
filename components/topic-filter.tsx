@@ -1,5 +1,8 @@
-import { ChevronDown, Search } from "lucide-react";
-import { FEATURED_TOPIC_IDS, TOPICS, getTopic } from "@/lib/domain/topics";
+"use client";
+
+import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { TOPICS } from "@/lib/domain/topics";
 
 export function TopicFilter({
   selectedIds,
@@ -8,49 +11,45 @@ export function TopicFilter({
   selectedIds: string[];
   onToggle: (id: string) => void;
 }) {
+  const [query, setQuery] = useState("");
+  const visibleTopics = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("en");
+    return [...TOPICS]
+      .sort((left, right) => left.label.localeCompare(right.label))
+      .filter(
+        (topic) =>
+          !normalized ||
+          topic.label.toLocaleLowerCase("en").includes(normalized) ||
+          topic.group.toLocaleLowerCase("en").includes(normalized) ||
+          topic.id.replaceAll("-", " ").includes(normalized),
+      );
+  }, [query]);
+
   return (
     <fieldset>
-      <legend>Topics · choose any</legend>
-      <div className="topic-list">
-        {FEATURED_TOPIC_IDS.map((topicId) => {
-          const topic = getTopic(topicId);
-          return topic ? (
-            <TopicChip
-              key={topic.id}
-              id={topic.id}
-              label={topic.label}
-              selected={selectedIds.includes(topic.id)}
-              onToggle={onToggle}
-            />
-          ) : null;
-        })}
+      <legend>Topics</legend>
+      <span className="search-input topic-search">
+        <Search size={17} aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search all topics"
+          aria-label="Search topics"
+        />
+      </span>
+      <div className="topic-list" aria-label={`${visibleTopics.length} matching topics`}>
+        {visibleTopics.map((topic) => (
+          <TopicChip
+            key={topic.id}
+            id={topic.id}
+            label={topic.label}
+            selected={selectedIds.includes(topic.id)}
+            onToggle={onToggle}
+          />
+        ))}
       </div>
-      <details className="topic-drawer">
-        <summary>
-          <span>
-            <Search size={16} aria-hidden="true" /> Browse all {TOPICS.length} topics
-          </span>
-          <ChevronDown size={17} aria-hidden="true" />
-        </summary>
-        <div className="topic-groups">
-          {[...new Set(TOPICS.map((topic) => topic.group))].map((group) => (
-            <section key={group} aria-labelledby={`topic-group-${slugify(group)}`}>
-              <h2 id={`topic-group-${slugify(group)}`}>{group}</h2>
-              <div className="topic-list">
-                {TOPICS.filter((topic) => topic.group === group).map((topic) => (
-                  <TopicChip
-                    key={topic.id}
-                    id={topic.id}
-                    label={topic.label}
-                    selected={selectedIds.includes(topic.id)}
-                    onToggle={onToggle}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      </details>
+      {visibleTopics.length === 0 ? <p className="empty-filter">No topics found</p> : null}
     </fieldset>
   );
 }
@@ -72,8 +71,4 @@ function TopicChip({
       <span>{label}</span>
     </label>
   );
-}
-
-function slugify(value: string): string {
-  return value.toLocaleLowerCase("en").replace(/[^a-z0-9]+/g, "-");
 }

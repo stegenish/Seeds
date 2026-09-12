@@ -1,11 +1,14 @@
 "use client";
 
-import { BookOpenText, Clock3, ExternalLink, Sparkles, UserRound } from "lucide-react";
+import { BookOpenText, ChevronDown, Clock3, ExternalLink, SlidersHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { CatalogStatus, type CatalogSyncState } from "@/components/catalog-status";
 import { FilterSelect } from "@/components/filter-select";
-import { PersistentPlayer } from "@/components/persistent-player";
+import { PersistentPlayer, type PersistentPlayerHandle } from "@/components/persistent-player";
+import { QuickListenActions } from "@/components/quick-listen-actions";
 import { TalkSelection } from "@/components/talk-selection";
+import { TeacherFilter } from "@/components/teacher-filter";
 import { TopicFilter } from "@/components/topic-filter";
 import { getAllTalks, getAllTeachers } from "@/lib/catalog/database";
 import { syncCatalog } from "@/lib/catalog/sync";
@@ -14,7 +17,9 @@ import type { RecordingKindFilter, SelectionFilters, Talk, Teacher } from "@/lib
 import {
   addSelectionToHistory,
   readFavorites,
+  readLastPlayedTalkId,
   readSelectionHistory,
+  saveLastPlayedTalkId,
   toggleFavorite,
 } from "@/lib/user/preferences";
 
@@ -33,13 +38,14 @@ export function ListenerApp() {
   const [talks, setTalks] = useState<Talk[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [filters, setFilters] = useState<SelectionFilters>(EMPTY_FILTERS);
-  const [selectedTalk, setSelectedTalk] = useState<Talk | null>(null);
   const [currentTalk, setCurrentTalk] = useState<Talk | null>(null);
+  const [lastPlayedId, setLastPlayedId] = useState<number | null>(null);
   const [history, setHistory] = useState<number[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [syncState, setSyncState] = useState<CatalogSyncState>({ status: "loading" });
   const [selectionMessage, setSelectionMessage] = useState<string | null>(null);
   const syncStarted = useRef(false);
+  const playerRef = useRef<PersistentPlayerHandle>(null);
 
   useEffect(() => {
     if (syncStarted.current) return;
@@ -53,6 +59,7 @@ export function ListenerApp() {
         setTeachers(storedTeachers);
         setHistory(readSelectionHistory());
         setFavorites(readFavorites());
+        setLastPlayedId(readLastPlayedTalkId());
         if (storedTalks.length > 0) setSyncState({ status: "ready" });
 
         await syncCatalog({
@@ -84,34 +91,61 @@ export function ListenerApp() {
     return () => controller.abort();
   }, []);
 
-  const eligibleCount = useMemo(() => filterTalks(talks, filters).length, [talks, filters]);
   const teacherById = useMemo(
     () => new Map(teachers.map((teacher) => [teacher.id, teacher])),
     [teachers],
   );
+  const counts = useMemo(
+    () => ({
+      all: filterTalks(talks, { ...filters, kind: "all" }).length,
+      talk: filterTalks(talks, { ...filters, kind: "talk" }).length,
+      "guided-meditation": filterTalks(talks, {
+        ...filters,
+        kind: "guided-meditation",
+      }).length,
+    }),
+    [talks, filters],
+  );
+  const lastPlayedTalk = useMemo(
+    () => talks.find((talk) => talk.id === lastPlayedId) ?? null,
+    [lastPlayedId, talks],
+  );
+  const selectedTeacherName =
+    filters.teacherId === null ? null : teacherById.get(filters.teacherId)?.name;
+  const hasRefinements =
+    filters.topicIds.length > 0 ||
+    filters.teacherId !== null ||
+    filters.languageId !== 1 ||
+    filters.maximumDurationMinutes !== null;
 
-  function chooseTeaching() {
-    const result = selectRandomTalk(talks, filters, new Set(history));
+  function startTalk(talk: Talk) {
+    flushSync(() => {
+      setCurrentTalk(talk);
+      setLastPlayedId(talk.id);
+      setSelectionMessage(null);
+    });
+    saveLastPlayedTalkId(talk.id);
+    void playerRef.current?.play();
+  }
+
+  function playRandom(kind: RecordingKindFilter) {
+    const nextFilters = { ...filters, kind };
+    const result = selectRandomTalk(talks, nextFilters, new Set(history));
     if (!result.talk) {
       setSelectionMessage(
         talks.length === 0
-          ? "The archive is still preparing. Try again after the first recordings arrive."
-          : "No synchronized recordings match these filters. Try widening the pool.",
+          ? "The archive is still preparing. Try again when the first talks arrive."
+          : "No synchronized recordings match these choices. Try clearing a refinement.",
       );
       return;
     }
 
+    setFilters(nextFilters);
     setHistory(addSelectionToHistory(result.talk.id));
-    setSelectedTalk(result.talk);
-    setSelectionMessage(
-      result.historyWasReset
-        ? "You reached the end of this listening pool, so it began again."
-        : null,
-    );
-  }
-
-  function changeKind(kind: RecordingKindFilter) {
-    setFilters((current) => ({ ...current, kind }));
+    startTalk(result.talk);
+    if (result.historyWasReset) {
+      setSelectionMessage("You heard every talk in this pool, so the shuffle started again.");
+    }
   }
 
   function toggleTopic(topicId: string) {
@@ -126,13 +160,6 @@ export function ListenerApp() {
   function handleFavorite(talkId: number) {
     setFavorites(toggleFavorite(talkId));
   }
-
-  const hasFilters =
-    filters.kind !== "all" ||
-    filters.topicIds.length > 0 ||
-    filters.teacherId !== null ||
-    filters.languageId !== 1 ||
-    filters.maximumDurationMinutes !== null;
 
   return (
     <main className={`app-shell ${currentTalk ? "has-player" : ""}`}>
@@ -158,140 +185,104 @@ export function ListenerApp() {
 
       <section className="picker" id="top" aria-labelledby="picker-title">
         <div className="picker-intro">
-          <p className="eyebrow">Random listening</p>
-          <h1 id="picker-title">What would you like to sit with?</h1>
-          <p className="lede">Shape a listening pool, then let one teaching find you.</p>
+          <h1 id="picker-title">Listen now</h1>
+          <p className="lede">One tap starts a teaching.</p>
         </div>
 
-        <div className="filters" aria-label="Listening pool filters">
-          <fieldset>
-            <legend>Kind</legend>
-            <div className="segmented-control" aria-label="Recording kind">
-              {[
-                ["all", "Any recording"],
-                ["talk", "Dhamma talk"],
-                ["guided-meditation", "Guided meditation"],
-              ].map(([value, label]) => (
-                <label key={value}>
-                  <input
-                    type="radio"
-                    name="kind"
-                    value={value}
-                    checked={filters.kind === value}
-                    onChange={() => changeKind(value as RecordingKindFilter)}
-                  />
-                  <span>{label}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
+        <QuickListenActions
+          counts={counts}
+          activeKind={currentTalk ? filters.kind : null}
+          isPreparing={talks.length === 0}
+          lastTalk={currentTalk ? null : lastPlayedTalk}
+          lastTeacherNames={lastPlayedTalk ? getTeacherNames(lastPlayedTalk, teacherById) : ""}
+          onListen={playRandom}
+          onContinue={() => {
+            if (lastPlayedTalk) startTalk(lastPlayedTalk);
+          }}
+        />
 
-          <TopicFilter selectedIds={filters.topicIds} onToggle={toggleTopic} />
+        {selectionMessage ? <p className="selection-message">{selectionMessage}</p> : null}
 
-          <div className="filter-grid">
-            <FilterSelect
-              id="teacher"
-              label="Teacher"
-              icon={<UserRound size={17} aria-hidden="true" />}
-              value={filters.teacherId ?? ""}
-              onChange={(value) =>
-                setFilters((current) => ({
-                  ...current,
-                  teacherId: value ? Number(value) : null,
-                }))
-              }
-            >
-              <option value="">Any teacher</option>
-              {teachers.map((teacher) => (
-                <option key={teacher.id} value={teacher.id}>
-                  {teacher.name}
-                </option>
-              ))}
-            </FilterSelect>
+        {currentTalk ? (
+          <TalkSelection
+            talk={currentTalk}
+            teacherNames={getTeacherNames(currentTalk, teacherById)}
+            isFavorite={favorites.includes(currentTalk.id)}
+            onFavorite={handleFavorite}
+            onPlayAnother={() => playRandom(filters.kind)}
+          />
+        ) : null}
 
-            <FilterSelect
-              id="duration"
-              label="Duration"
-              icon={<Clock3 size={17} aria-hidden="true" />}
-              value={filters.maximumDurationMinutes ?? ""}
-              onChange={(value) =>
-                setFilters((current) => ({
-                  ...current,
-                  maximumDurationMinutes: value ? Number(value) : null,
-                }))
-              }
-            >
-              <option value="">Any length</option>
-              <option value="15">Up to 15 minutes</option>
-              <option value="30">Up to 30 minutes</option>
-              <option value="45">Up to 45 minutes</option>
-              <option value="60">Up to 1 hour</option>
-            </FilterSelect>
+        <details className="refine-panel">
+          <summary>
+            <SlidersHorizontal size={19} aria-hidden="true" />
+            <span>
+              <strong>Refine the selection</strong>
+              <small>{formatRefinementSummary(filters, selectedTeacherName)}</small>
+            </span>
+            <ChevronDown className="refine-chevron" size={18} aria-hidden="true" />
+          </summary>
 
-            <FilterSelect
-              id="language"
-              label="Language"
-              icon={<BookOpenText size={17} aria-hidden="true" />}
-              value={filters.languageId ?? ""}
-              onChange={(value) =>
-                setFilters((current) => ({
-                  ...current,
-                  languageId: value ? Number(value) : null,
-                }))
-              }
-            >
-              <option value="1">English</option>
-              <option value="">Any language</option>
-            </FilterSelect>
-          </div>
+          <div className="filters" aria-label="Listening refinements">
+            <TopicFilter selectedIds={filters.topicIds} onToggle={toggleTopic} />
 
-          {hasFilters ? (
-            <button
-              className="clear-button"
-              type="button"
-              onClick={() => setFilters(EMPTY_FILTERS)}
-            >
-              Clear filters
-            </button>
-          ) : null}
-        </div>
-
-        <section className="draw-area" aria-label="Random teaching selection">
-          {selectedTalk ? (
-            <TalkSelection
-              talk={selectedTalk}
-              teacherNames={getTeacherNames(selectedTalk, teacherById)}
-              isFavorite={favorites.includes(selectedTalk.id)}
-              onFavorite={handleFavorite}
-              onPlay={setCurrentTalk}
-              onChooseAgain={chooseTeaching}
+            <TeacherFilter
+              teachers={teachers}
+              selectedId={filters.teacherId}
+              onSelect={(teacherId) => setFilters((current) => ({ ...current, teacherId }))}
             />
-          ) : (
-            <>
-              <div className="draw-orbit" aria-hidden="true">
-                <div className="draw-center">
-                  <Sparkles size={27} />
-                </div>
+
+            <details className="more-options">
+              <summary>Duration and language</summary>
+              <div className="filter-grid">
+                <FilterSelect
+                  id="duration"
+                  label="Duration"
+                  icon={<Clock3 size={17} aria-hidden="true" />}
+                  value={filters.maximumDurationMinutes ?? ""}
+                  onChange={(value) =>
+                    setFilters((current) => ({
+                      ...current,
+                      maximumDurationMinutes: value ? Number(value) : null,
+                    }))
+                  }
+                >
+                  <option value="">Any length</option>
+                  <option value="15">Up to 15 minutes</option>
+                  <option value="30">Up to 30 minutes</option>
+                  <option value="45">Up to 45 minutes</option>
+                  <option value="60">Up to 1 hour</option>
+                </FilterSelect>
+
+                <FilterSelect
+                  id="language"
+                  label="Language"
+                  icon={<BookOpenText size={17} aria-hidden="true" />}
+                  value={filters.languageId ?? ""}
+                  onChange={(value) =>
+                    setFilters((current) => ({
+                      ...current,
+                      languageId: value ? Number(value) : null,
+                    }))
+                  }
+                >
+                  <option value="1">English</option>
+                  <option value="">Any language</option>
+                </FilterSelect>
               </div>
+            </details>
+
+            {hasRefinements ? (
               <button
-                className="draw-button"
+                className="clear-button"
                 type="button"
-                onClick={chooseTeaching}
-                disabled={talks.length === 0}
+                onClick={() => setFilters((current) => ({ ...EMPTY_FILTERS, kind: current.kind }))}
               >
-                Choose a teaching
+                Clear refinements
               </button>
-              <p className="pool-note">
-                {eligibleCount > 0
-                  ? `${eligibleCount.toLocaleString()} synchronized recordings in this pool`
-                  : talks.length > 0
-                    ? "No synchronized recordings match yet"
-                    : "Preparing the first recordings on this device"}
-              </p>
-            </>
-          )}
-          {selectionMessage ? <p className="selection-message">{selectionMessage}</p> : null}
-        </section>
+            ) : null}
+          </div>
+        </details>
       </section>
 
       <footer className="site-footer">
@@ -306,6 +297,8 @@ export function ListenerApp() {
 
       {currentTalk ? (
         <PersistentPlayer
+          ref={playerRef}
+          key={currentTalk.id}
           talk={currentTalk}
           teacherNames={getTeacherNames(currentTalk, teacherById)}
           onClose={() => setCurrentTalk(null)}
@@ -313,6 +306,18 @@ export function ListenerApp() {
       ) : null}
     </main>
   );
+}
+
+function formatRefinementSummary(
+  filters: SelectionFilters,
+  teacherName: string | undefined | null,
+): string {
+  const topics =
+    filters.topicIds.length === 0
+      ? "Any topic"
+      : `${filters.topicIds.length} topic${filters.topicIds.length === 1 ? "" : "s"}`;
+  const teacher = teacherName ?? (filters.teacherId === null ? "Any teacher" : "Teacher selected");
+  return `${topics} · ${teacher}`;
 }
 
 function getTeacherNames(talk: Talk, teachers: ReadonlyMap<number, Teacher>): string {

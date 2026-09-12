@@ -1,6 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { saveLastPlayedTalkId } from "@/lib/user/preferences";
 import { makeTalk, makeTeacher } from "@/test/factories";
 
 vi.mock("@/lib/catalog/database", () => ({
@@ -18,12 +19,18 @@ import { ListenerApp } from "./listener-app";
 const talks = [
   makeTalk({ id: 1, title: "The nature of not-self", topicIds: ["not-self"] }),
   makeTalk({ id: 2, title: "A guided breath meditation", kind: "guided-meditation" }),
+  makeTalk({ id: 3, title: "A second Dhamma talk" }),
 ];
 
 describe("ListenerApp", () => {
   beforeEach(() => {
     vi.mocked(getAllTalks).mockResolvedValue(talks);
     vi.mocked(getAllTeachers).mockResolvedValue([makeTeacher()]);
+    vi.spyOn(Math, "random").mockReturnValue(0);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("links to Dharma Seed's official donation page", async () => {
@@ -35,12 +42,12 @@ describe("ListenerApp", () => {
     );
   });
 
-  it("selects from the Dhamma-talk pool and shows attribution", async () => {
+  it("starts a random Dhamma talk with one tap and keeps the card aligned with audio", async () => {
     const user = userEvent.setup();
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
     render(<ListenerApp />);
 
-    await user.click(await screen.findByLabelText("Dhamma talk"));
-    await user.click(screen.getByRole("button", { name: "Choose a teaching" }));
+    await user.click(await screen.findByRole("button", { name: /Play a Dhamma talk/ }));
 
     const heading = await screen.findByRole("heading", { name: "The nature of not-self" });
     const selection = heading.closest("article");
@@ -49,16 +56,65 @@ describe("ListenerApp", () => {
     expect(
       within(selection!).getByRole("link", { name: /Original on Dharma Seed/ }),
     ).toHaveAttribute("href", "https://www.dharmaseed.org/talks/1/");
+    expect(screen.getByLabelText("Now playing").querySelector("audio")).toHaveAttribute(
+      "src",
+      talks[0]!.audioUrl,
+    );
+    expect(playSpy).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "Play another" }));
+
+    expect(await screen.findByRole("heading", { name: "A second Dhamma talk" })).toBeVisible();
+    expect(screen.getByLabelText("Now playing").querySelector("audio")).toHaveAttribute(
+      "src",
+      talks[2]!.audioUrl,
+    );
+    expect(playSpy).toHaveBeenCalledTimes(2);
   });
 
-  it("allows topic and teacher filters to be combined", async () => {
+  it("treats every topic equally and combines searchable topic and teacher refinements", async () => {
     const user = userEvent.setup();
     render(<ListenerApp />);
 
-    const notSelfTopics = await screen.findAllByLabelText("Not-self (anatta)");
-    await user.click(notSelfTopics[0]!);
-    await user.selectOptions(screen.getByLabelText("Teacher"), "10");
+    await user.click(screen.getByText("Refine the selection"));
+    expect(await screen.findByLabelText("Four Noble Truths")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Four Noble Truths")).toHaveLength(1);
+    expect(screen.queryByText(/Browse all/)).not.toBeInTheDocument();
 
-    expect(screen.getByText("1 synchronized recordings in this pool")).toBeVisible();
+    await user.type(screen.getByLabelText("Search topics"), "anatta");
+    await user.click(screen.getByLabelText("Not-self (anatta)"));
+    await user.type(screen.getByLabelText("Teacher"), "Test");
+    await user.click(screen.getByRole("button", { name: "Test Teacher" }));
+
+    const dhammaButton = screen.getByRole("button", { name: /Play a Dhamma talk/ });
+    expect(within(dhammaButton).getByText("1 available")).toBeVisible();
+  });
+
+  it("offers a one-tap continuation for the most recently played talk", async () => {
+    const user = userEvent.setup();
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    saveLastPlayedTalkId(1);
+    render(<ListenerApp />);
+
+    await user.click(await screen.findByRole("button", { name: /Continue listening/ }));
+
+    expect(await screen.findByRole("heading", { name: "The nature of not-self" })).toBeVisible();
+    expect(screen.getByLabelText("Now playing").querySelector("audio")).toHaveAttribute(
+      "src",
+      talks[0]!.audioUrl,
+    );
+    expect(playSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains how to recover when the browser blocks the first playback request", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(
+      new DOMException("Playback blocked", "NotAllowedError"),
+    );
+    render(<ListenerApp />);
+
+    await user.click(await screen.findByRole("button", { name: /Play a Dhamma talk/ }));
+
+    expect(await screen.findByText("Tap play to start audio")).toBeVisible();
   });
 });
