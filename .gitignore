@@ -26,3 +26,4 @@ test-results/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
+.neon
