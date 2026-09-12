@@ -19,6 +19,8 @@ The web app is designed to be installed from Chrome on Android and deployed to V
 
 The first synchronization prepares teachers and recent recordings before proceeding through the archive. A partial synchronized catalog remains usable if the network becomes unavailable, and synchronization resumes on the next visit.
 
+Synchronization errors offer a visible retry action and two bounded automatic retries. The installed app caches its interface and catalog for offline selection; audio still requires a connection. If preference storage fails, listening and session-local preferences continue with a warning. Shuffle history resets only the exhausted filter pool and retains the other pools' recent selections; it is no longer limited to 2,000 recordings.
+
 ## Development
 
 Requirements: Node.js 22 or newer and pnpm 11.
@@ -40,6 +42,15 @@ pnpm test
 pnpm build
 ```
 
+Production-browser regression tests (run after `pnpm build`):
+
+```sh
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
+
+The tests start a temporary production server on port 3100 and use generated silent audio and fixture metadata, never Dharma Seed recordings. On Windows they default to installed Microsoft Edge; elsewhere they use Playwright Chromium. Set `PLAYWRIGHT_CHANNEL` to override the browser channel. CI installs Chromium and runs these checks. Physical Android background/lock-screen behavior remains a separate device check.
+
 The optional live contract check makes two bounded, read-only requests to Dharma Seed and is intentionally separate from ordinary tests:
 
 ```sh
@@ -56,6 +67,7 @@ pnpm test:contract
 
 See [the implementation plan](docs/implementation-plan.md) and [architecture decision 0001](docs/decisions/0001-local-first-pwa.md) for the rationale and milestone history.
 The [first-release verification record](docs/release-verification.md) captures the checks performed against the initial implementation.
+The [repair journal](docs/repair-progress.md) tracks review fixes and verification. [Decision 0002](docs/decisions/0002-catalog-consistency.md) explains replay-safe synchronization, metadata cache ownership, and classification migrations.
 
 ## Deploying to Vercel
 

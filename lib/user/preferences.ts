@@ -1,3 +1,5 @@
+import { readStoredValue, writeStoredValue } from "./safe-storage";
+
 const HISTORY_KEY = "stillpoint:selection-history";
 const FAVORITES_KEY = "stillpoint:favorites";
 const PROGRESS_KEY = "stillpoint:playback-progress";
@@ -80,4 +82,3 @@ function readProgressMap(storage?: Storage): PlaybackProgress {
     return {};
   }
 }
-import { readStoredValue, writeStoredValue } from "./safe-storage";

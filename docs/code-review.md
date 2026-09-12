@@ -2,6 +2,8 @@
 
 Review target: `bd0b6012985f79b29fa549bcda6e6d44dc48ec5b` (main).
 
+Historical review: implementation was subsequently authorized. See [the repair journal](repair-progress.md) for current status and commit checkpoints. The opt-in probes below have now been promoted into the normal regression suite; run `pnpm test` and `pnpm test:e2e`, not the retired review configuration.
+
 Scope: bugs, duplication/cohesion/factoring, and meaningful test coverage. The user requested a review, not implementation of fixes. Only review artifacts should change during this task.
 
 ## Progress

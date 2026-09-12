@@ -9,6 +9,7 @@ export default defineConfig({
     },
   },
   test: {
+    include: ["{app,components,lib,test}/**/*.test.{ts,tsx}"],
     environment: "jsdom",
     environmentOptions: {
       jsdom: { url: "http://localhost:3000/" },

@@ -1,5 +1,6 @@
 # dependencies
 node_modules/
+.pnpm-store/
 
 # Next.js
 .next/
@@ -25,4 +26,3 @@ test-results/
 *.tsbuildinfo
 .DS_Store
 Thumbs.db
-
