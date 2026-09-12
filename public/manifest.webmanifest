@@ -1,0 +1,18 @@
+{
+  "name": "Stillpoint — Dharma Seed listener",
+  "short_name": "Stillpoint",
+  "description": "A quiet, unofficial way to discover and listen to Dharma Seed talks.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f5ef",
+  "theme_color": "#121a2b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
