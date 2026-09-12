@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpenText, ChevronDown, Clock3, ExternalLink, SlidersHorizontal } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { CatalogStatus } from "@/components/catalog-status";
 import { FilterSelect } from "@/components/filter-select";
@@ -14,13 +14,14 @@ import { useCatalog } from "@/lib/catalog/use-catalog";
 import { filterTalks, selectRandomTalk } from "@/lib/domain/selection";
 import type { RecordingKindFilter, SelectionFilters, Talk, Teacher } from "@/lib/domain/talk";
 import {
-  addSelectionToHistory,
+  saveSelectionHistory,
   readFavorites,
   readLastPlayedTalkId,
   readSelectionHistory,
   saveLastPlayedTalkId,
   toggleFavorite,
 } from "@/lib/user/preferences";
+import { getStorageUnavailable, subscribeStorage } from "@/lib/user/safe-storage";
 
 const LICENSE_URL = "https://creativecommons.org/licenses/by-nc-nd/4.0/";
 const DHARMA_SEED_DONATION_URL = "https://dharmaseed.org/about/donation/";
@@ -34,6 +35,11 @@ const EMPTY_FILTERS: SelectionFilters = {
 };
 
 export function ListenerApp() {
+  const storageUnavailable = useSyncExternalStore(
+    subscribeStorage,
+    getStorageUnavailable,
+    () => false,
+  );
   const { talks, teachers, state: syncState, retry } = useCatalog();
   const [filters, setFilters] = useState<SelectionFilters>(EMPTY_FILTERS);
   const [currentTalkId, setCurrentTalkId] = useState<number | null>(null);
@@ -107,10 +113,11 @@ export function ListenerApp() {
     }
 
     setFilters(nextFilters);
-    setHistory(addSelectionToHistory(result.talk.id));
+    setHistory(result.nextHistory);
+    saveSelectionHistory(result.nextHistory);
     startTalk(result.talk);
     if (result.historyWasReset) {
-      setSelectionMessage("You heard every talk in this pool, so the shuffle started again.");
+      setSelectionMessage("You selected every talk in this pool, so the shuffle started again.");
     }
   }
 
@@ -170,6 +177,12 @@ export function ListenerApp() {
         />
 
         {selectionMessage ? <p className="selection-message">{selectionMessage}</p> : null}
+        {storageUnavailable ? (
+          <p className="selection-message" role="status">
+            Listening still works. Preferences are kept for this session, but may not survive
+            closing the app because device storage is unavailable.
+          </p>
+        ) : null}
         {syncState.status === "error" ? (
           <div className="selection-message" role="alert">
             <p>{syncState.message} Cached recordings remain available.</p>

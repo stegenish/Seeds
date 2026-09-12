@@ -4,6 +4,7 @@ export interface RandomSelection {
   talk: Talk | null;
   eligibleCount: number;
   historyWasReset: boolean;
+  nextHistory: number[];
 }
 
 export function filterTalks(talks: Talk[], filters: SelectionFilters): Talk[] {
@@ -46,7 +47,7 @@ export function selectRandomTalk(
 ): RandomSelection {
   const eligible = filterTalks(talks, filters);
   if (eligible.length === 0) {
-    return { talk: null, eligibleCount: 0, historyWasReset: false };
+    return { talk: null, eligibleCount: 0, historyWasReset: false, nextHistory: [...recentIds] };
   }
 
   const unseen = eligible.filter((talk) => !recentIds.has(talk.id));
@@ -54,9 +55,17 @@ export function selectRandomTalk(
   const rawIndex = Math.floor(random() * pool.length);
   const index = Math.min(Math.max(rawIndex, 0), pool.length - 1);
 
+  const talk = pool[index] ?? null;
+  const catalogIds = new Set(talks.map((item) => item.id));
+  const resetIds =
+    unseen.length === 0 ? new Set(eligible.map((item) => item.id)) : new Set<number>();
+  const retained = [...recentIds].filter(
+    (id) => catalogIds.has(id) && !resetIds.has(id) && id !== talk?.id,
+  );
   return {
-    talk: pool[index] ?? null,
+    talk,
     eligibleCount: eligible.length,
     historyWasReset: unseen.length === 0,
+    nextHistory: talk ? [talk.id, ...retained] : retained,
   };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  addSelectionToHistory,
+  saveSelectionHistory,
   readFavorites,
   readLastPlayedTalkId,
   readPlaybackProgress,
@@ -12,9 +12,7 @@ import {
 
 describe("local preferences", () => {
   it("keeps newest selections first without duplicates", () => {
-    addSelectionToHistory(1);
-    addSelectionToHistory(2);
-    addSelectionToHistory(1);
+    saveSelectionHistory([1, 2, 1]);
     expect(readSelectionHistory()).toEqual([1, 2]);
   });
 
@@ -42,5 +40,12 @@ describe("local preferences", () => {
   it("recovers from malformed storage", () => {
     localStorage.setItem("stillpoint:selection-history", "not-json");
     expect(readSelectionHistory()).toEqual([]);
+  });
+  it("rejects malformed progress values and ignores non-finite writes", () => {
+    localStorage.setItem("stillpoint:playback-progress", '{"1":-5,"2":"12","3":12}');
+    expect(readPlaybackProgress(1)).toBe(0);
+    expect(readPlaybackProgress(2)).toBe(0);
+    savePlaybackProgress(3, Number.NaN);
+    expect(readPlaybackProgress(3)).toBe(12);
   });
 });

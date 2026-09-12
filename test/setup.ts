@@ -2,6 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import "fake-indexeddb/auto";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "vitest";
+import { resetPreferenceSessionForTests } from "@/lib/user/safe-storage";
 
 Object.defineProperty(HTMLMediaElement.prototype, "play", {
   configurable: true,
@@ -16,4 +17,5 @@ Object.defineProperty(HTMLMediaElement.prototype, "pause", {
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  resetPreferenceSessionForTests();
 });

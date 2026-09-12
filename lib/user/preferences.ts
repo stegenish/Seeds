@@ -2,28 +2,24 @@ const HISTORY_KEY = "stillpoint:selection-history";
 const FAVORITES_KEY = "stillpoint:favorites";
 const PROGRESS_KEY = "stillpoint:playback-progress";
 const LAST_PLAYED_KEY = "stillpoint:last-played-talk";
-const MAX_HISTORY_LENGTH = 2_000;
 
 interface PlaybackProgress {
   [talkId: string]: number;
 }
 
-export function readSelectionHistory(storage: Storage = localStorage): number[] {
+export function readSelectionHistory(storage?: Storage): number[] {
   return readNumberArray(storage, HISTORY_KEY);
 }
 
-export function addSelectionToHistory(talkId: number, storage: Storage = localStorage): number[] {
-  const history = readSelectionHistory(storage).filter((id) => id !== talkId);
-  const nextHistory = [talkId, ...history].slice(0, MAX_HISTORY_LENGTH);
-  storage.setItem(HISTORY_KEY, JSON.stringify(nextHistory));
-  return nextHistory;
+export function saveSelectionHistory(history: number[], storage?: Storage): void {
+  writeStoredValue(HISTORY_KEY, JSON.stringify([...new Set(history)]), storage);
 }
 
-export function readFavorites(storage: Storage = localStorage): number[] {
+export function readFavorites(storage?: Storage): number[] {
   return readNumberArray(storage, FAVORITES_KEY);
 }
 
-export function toggleFavorite(talkId: number, storage: Storage = localStorage): number[] {
+export function toggleFavorite(talkId: number, storage?: Storage): number[] {
   const favorites = new Set(readFavorites(storage));
   if (favorites.has(talkId)) {
     favorites.delete(talkId);
@@ -31,36 +27,33 @@ export function toggleFavorite(talkId: number, storage: Storage = localStorage):
     favorites.add(talkId);
   }
   const nextFavorites = [...favorites];
-  storage.setItem(FAVORITES_KEY, JSON.stringify(nextFavorites));
+  writeStoredValue(FAVORITES_KEY, JSON.stringify(nextFavorites), storage);
   return nextFavorites;
 }
 
-export function readPlaybackProgress(talkId: number, storage: Storage = localStorage): number {
+export function readPlaybackProgress(talkId: number, storage?: Storage): number {
   return readProgressMap(storage)[talkId] ?? 0;
 }
 
-export function savePlaybackProgress(
-  talkId: number,
-  seconds: number,
-  storage: Storage = localStorage,
-): void {
+export function savePlaybackProgress(talkId: number, seconds: number, storage?: Storage): void {
   const progress = readProgressMap(storage);
+  if (!Number.isFinite(seconds)) return;
   progress[talkId] = Math.max(0, Math.floor(seconds));
-  storage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+  writeStoredValue(PROGRESS_KEY, JSON.stringify(progress), storage);
 }
 
-export function readLastPlayedTalkId(storage: Storage = localStorage): number | null {
-  const value = Number(storage.getItem(LAST_PLAYED_KEY));
+export function readLastPlayedTalkId(storage?: Storage): number | null {
+  const value = Number(readStoredValue(LAST_PLAYED_KEY, storage));
   return Number.isInteger(value) && value > 0 ? value : null;
 }
 
-export function saveLastPlayedTalkId(talkId: number, storage: Storage = localStorage): void {
-  storage.setItem(LAST_PLAYED_KEY, String(talkId));
+export function saveLastPlayedTalkId(talkId: number, storage?: Storage): void {
+  writeStoredValue(LAST_PLAYED_KEY, String(talkId), storage);
 }
 
-function readNumberArray(storage: Storage, key: string): number[] {
+function readNumberArray(storage: Storage | undefined, key: string): number[] {
   try {
-    const value: unknown = JSON.parse(storage.getItem(key) ?? "[]");
+    const value: unknown = JSON.parse(readStoredValue(key, storage) ?? "[]");
     return Array.isArray(value)
       ? value.filter((item): item is number => Number.isInteger(item) && item > 0)
       : [];
@@ -69,16 +62,22 @@ function readNumberArray(storage: Storage, key: string): number[] {
   }
 }
 
-function readProgressMap(storage: Storage): PlaybackProgress {
+function readProgressMap(storage?: Storage): PlaybackProgress {
   try {
-    const value: unknown = JSON.parse(storage.getItem(PROGRESS_KEY) ?? "{}");
+    const value: unknown = JSON.parse(readStoredValue(PROGRESS_KEY, storage) ?? "{}");
     if (!value || typeof value !== "object" || Array.isArray(value)) return {};
     return Object.fromEntries(
       Object.entries(value).filter(
-        ([key, seconds]) => Number.isInteger(Number(key)) && typeof seconds === "number",
+        ([key, seconds]) =>
+          Number.isInteger(Number(key)) &&
+          Number(key) > 0 &&
+          typeof seconds === "number" &&
+          Number.isFinite(seconds) &&
+          seconds >= 0,
       ),
     );
   } catch {
     return {};
   }
 }
+import { readStoredValue, writeStoredValue } from "./safe-storage";

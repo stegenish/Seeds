@@ -1,8 +1,13 @@
 import { expect, it, vi } from "vitest";
 import {
-  addSelectionToHistory,
+  saveSelectionHistory,
   readLastPlayedTalkId,
   saveLastPlayedTalkId,
+  readSelectionHistory,
+  toggleFavorite,
+  readFavorites,
+  savePlaybackProgress,
+  readPlaybackProgress,
 } from "@/lib/user/preferences";
 
 it("R6: permits in-memory history updates when durable storage is full", () => {
@@ -16,8 +21,15 @@ it("R6: permits in-memory history updates when durable storage is full", () => {
       throw new DOMException("Quota full", "QuotaExceededError");
     },
   };
-  expect(() => addSelectionToHistory(1, storage)).not.toThrow();
+  expect(() => saveSelectionHistory([1], storage)).not.toThrow();
   expect(() => saveLastPlayedTalkId(1, storage)).not.toThrow();
+  expect(readSelectionHistory(storage)).toEqual([1]);
+  expect(readLastPlayedTalkId(storage)).toBe(1);
+  toggleFavorite(1, storage);
+  expect(readFavorites(storage)).toEqual([1]);
+  expect(toggleFavorite(1, storage)).toEqual([]);
+  savePlaybackProgress(1, 37, storage);
+  expect(readPlaybackProgress(1, storage)).toBe(37);
 });
 
 it("R6: handles denied last-played storage like the other preference reads", () => {

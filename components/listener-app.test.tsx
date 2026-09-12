@@ -42,6 +42,22 @@ describe("ListenerApp", () => {
     );
   });
 
+  it("R6: keeps one-tap playback and favorites working when storage is full", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Full", "QuotaExceededError");
+    });
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    render(<ListenerApp />);
+    await user.click(await screen.findByRole("button", { name: /Play a Dhamma talk/ }));
+    expect(playSpy).toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Listening still works");
+    await user.click(screen.getByRole("button", { name: "Add to favorites" }));
+    expect(screen.getByRole("button", { name: "Remove from favorites" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Remove from favorites" }));
+    expect(screen.getByRole("button", { name: "Add to favorites" })).toBeVisible();
+  });
+
   it("starts a random Dhamma talk with one tap and keeps the card aligned with audio", async () => {
     const user = userEvent.setup();
     const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();

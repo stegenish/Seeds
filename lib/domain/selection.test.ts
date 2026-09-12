@@ -52,6 +52,37 @@ describe("filterTalks", () => {
 describe("selectRandomTalk", () => {
   const talks = [makeTalk({ id: 1 }), makeTalk({ id: 2 }), makeTalk({ id: 3 })];
 
+  it("R4: produces two complete shuffle cycles without repeats within either", () => {
+    let history: number[] = [];
+    const selected = Array.from({ length: 6 }, () => {
+      const result = selectRandomTalk(talks, filters, new Set(history), () => 0);
+      history = result.nextHistory;
+      return result.talk?.id;
+    });
+    expect(selected).toEqual([1, 2, 3, 1, 2, 3]);
+  });
+  it("resets only the exhausted filter pool and discards removed catalog IDs", () => {
+    const result = selectRandomTalk(
+      talks,
+      { ...filters, teacherId: 20 },
+      new Set([1, 999]),
+      () => 0,
+    );
+    expect(result.talk).toBeNull();
+    const narrow = [makeTalk({ id: 1, teacherIds: [20] }), makeTalk({ id: 2 })];
+    expect(
+      selectRandomTalk(narrow, { ...filters, teacherId: 20 }, new Set([1, 2, 999]), () => 0)
+        .nextHistory,
+    ).toEqual([1, 2]);
+  });
+  it("continues a pool larger than the old 2,000-record cap", () => {
+    const largePool = Array.from({ length: 2002 }, (_, id) => makeTalk({ id: id + 1 }));
+    const history = new Set(largePool.slice(0, 2001).map((talk) => talk.id));
+    const result = selectRandomTalk(largePool, filters, history, () => 0);
+    expect(result.talk?.id).toBe(2002);
+    expect(result.nextHistory).toHaveLength(2002);
+  });
+
   it("selects uniformly by index from unseen eligible talks", () => {
     expect(selectRandomTalk(talks, filters, new Set([1]), () => 0.99).talk?.id).toBe(3);
   });
@@ -67,6 +98,7 @@ describe("selectRandomTalk", () => {
       talk: null,
       eligibleCount: 0,
       historyWasReset: false,
+      nextHistory: [],
     });
   });
 });

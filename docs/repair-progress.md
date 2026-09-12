@@ -6,7 +6,7 @@ The proposed sequence is grouped into cohesive increments so shared contracts an
 
 - [x] Catalog correctness: R1/R2/R7, shared contracts, classification migration, regression/API tests. Commit subject: `fix: make catalog synchronization replay-safe and consistent`. Checks: 53 tests, typecheck, lint, formatting, production build. UI deletion regression is promoted in the catalog-owner increment.
 - [x] Restartable catalog owner: R3/R9, deletion-aware UI, cancellation and retry tests. Commit subject: `fix: make catalog startup restartable`. Checks: 59 tests, typecheck, lint, production build. Catalog progress and deletion state now have one owner; retry is bounded to two attempts plus explicit/manual or online recovery.
-- [ ] Selection and preferences: R4/R6, pure shuffle transitions, best-effort storage, tests.
+- [x] Selection and preferences: R4/R6, pure shuffle transitions, best-effort storage, tests. Commit subject: `fix: preserve shuffle cycles and tolerate storage failures`. Checks: 66 tests, typecheck, lint, production build. History is bounded by live catalog IDs rather than 2,000 selections; pool exhaustion clears only that pool's history. Failed preference writes remain readable in session memory with visible feedback.
 - [ ] Refinements: R8/R10, normalized aliases, complete summaries, tests.
 - [ ] Offline shell and playback: R5, cache upgrades, player lifecycle, production-browser tests.
 - [ ] Full verification, final diff review, documentation, and push to the requested repository.
