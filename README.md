@@ -11,26 +11,35 @@ The web app is designed to be installed from Chrome on Android and deployed to V
 - Classifies overlapping topics using deterministic English, Pali, and Sanskrit terms.
 - Gives every topic equal placement in one searchable, alphabetical list.
 - Combines kind, teacher, language, and duration filters; selected topics use OR semantics.
-- Synchronizes public metadata progressively into IndexedDB and applies later updates incrementally.
+- Downloads public metadata from a shared Neon catalog into IndexedDB and applies later updates incrementally.
 - Stores selection history, favorites, and playback progress only on the device.
 - Offers a direct continuation of the most recently played recording.
 - Streams original, unmodified audio directly from Dharma Seed.
 - Preserves teacher attribution, original-source links, and license information.
 
-The first synchronization prepares teachers and recent recordings before proceeding through the archive. A partial synchronized catalog remains usable if the network becomes unavailable, and synchronization resumes on the next visit.
+The first device synchronization downloads the shared catalog in replay-safe batches. A partially downloaded catalog remains usable if the network becomes unavailable, and synchronization resumes on the next visit. Returning devices normally receive only the records changed since their local version.
 
 Synchronization errors offer a visible retry action and two bounded automatic retries. The installed app caches its interface and catalog for offline selection; audio still requires a connection. If preference storage fails, listening and session-local preferences continue with a warning. Shuffle history resets only the exhausted filter pool and retains the other pools' recent selections; it is no longer limited to 2,000 recordings.
 
 ## Development
 
-Requirements: Node.js 22 or newer and pnpm 11.
+Requirements: Node.js 24 and pnpm 11 (the exact pnpm release is pinned in `package.json`).
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-The app is available at `http://localhost:3000`.
+Copy `.env.example` to `.env.local` and provide a pooled Neon `DATABASE_URL` plus a direct `DATABASE_URL_UNPOOLED`. The Neon CLI can manage those values after linking this directory and checking out a non-production development branch. Apply migrations and prepare that branch before starting the app:
+
+```sh
+pnpm db:migrate
+pnpm catalog:refresh
+pnpm catalog:check
+pnpm dev
+```
+
+The full first catalog refresh is an explicit workstation/admin operation because it can outlast a serverless request. Subsequent refreshes use Dharma Seed editions and normally make only two index requests plus detail requests for changed records. The app is available at `http://localhost:3000`.
 
 Standard checks:
 
@@ -59,21 +68,30 @@ pnpm test:contract
 
 ## Architecture
 
-- `app/api/catalog/` is the only server-side boundary that knows the remote endpoint. It validates and converts remote payloads into stable internal records.
-- `lib/catalog/` owns on-device storage and resumable synchronization.
+- `app/api/catalog/` serves the public, versioned catalog from Neon and exposes the protected scheduled-refresh entry point.
+- `lib/server/catalog/` owns refresh orchestration, atomic publication, and bounded database reads.
+- `lib/integrations/dharmaseed/` is the only boundary that knows the Dharma Seed endpoint and payload shapes.
+- `lib/catalog/` owns on-device IndexedDB storage and replay-safe synchronization from the shared catalog.
 - `lib/domain/` owns recording kinds, topic taxonomy, classification, filters, and random selection.
 - `lib/user/` owns private device-local preferences.
 - `components/` owns presentation and playback behavior.
 
-See [the implementation plan](docs/implementation-plan.md) and [architecture decision 0001](docs/decisions/0001-local-first-pwa.md) for the rationale and milestone history.
+See [the implementation plan](docs/implementation-plan.md), [architecture decision 0001](docs/decisions/0001-local-first-pwa.md), and [architecture decision 0003](docs/decisions/0003-shared-neon-catalog.md) for the rationale and milestone history.
 The [first-release verification record](docs/release-verification.md) captures the checks performed against the initial implementation.
 The [repair journal](docs/repair-progress.md) tracks review fixes and verification. [Decision 0002](docs/decisions/0002-catalog-consistency.md) explains replay-safe synchronization, metadata cache ownership, and classification migrations.
 
 ## Deploying to Vercel
 
-Import the repository into Vercel as a Next.js project. The build requires no environment variables or hosted database. Keep the deployment noncommercial and clearly unofficial.
+Import the repository into Vercel as a Next.js project and configure these production environment variables:
 
-The server-side catalog routes must remain enabled; a static export cannot contact the Dharma Seed metadata endpoint because it does not allow arbitrary browser origins. Audio does not pass through Vercel.
+- `DATABASE_URL`: the pooled Neon production connection string used by route handlers.
+- `CRON_SECRET`: a strong random secret that Vercel sends as the refresh route's bearer token.
+
+Keep `DATABASE_URL_UNPOOLED` on a trusted development/admin machine for Drizzle migrations; the running app does not need it. Before the first deployment, check out the Neon production branch locally, run `pnpm db:migrate`, then run `pnpm catalog:refresh` and `pnpm catalog:check`. Never use an expiring development branch URL in production.
+
+`vercel.json` invokes the protected refresh endpoint once per day. A catalog request that sees data older than 24 hours also schedules a leased refresh after returning the last known-good version. Failed refreshes retain that version and back off for an hour. Index responses have a short CDN lifetime; version-addressed detail batches have a long CDN lifetime.
+
+The server-side catalog routes must remain enabled; a static export cannot read Neon securely. Audio continues to stream directly from Dharma Seed and does not pass through Neon or Vercel.
 
 ## Content and licensing
 

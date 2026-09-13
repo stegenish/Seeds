@@ -62,7 +62,7 @@ describe("refreshCatalog", () => {
   });
 
   it("lets removals win over contradictory detail records", async () => {
-    const repository = makeRepository();
+    const repository = makeRepository({ activeVersion: 1 });
     const talk = makeTalk();
     const request: DharmaSeedRequester = async (resource, payload) => {
       if (resource === "teachers") return emptyResponse(payload.ids);
@@ -75,6 +75,20 @@ describe("refreshCatalog", () => {
     const update = vi.mocked(repository.publishRefresh).mock.calls[0][1];
     expect(update.talks).toEqual([]);
     expect(update.removedTalkIds).toEqual([1]);
+  });
+
+  it("does not retain historical removal tombstones in the initial catalog", async () => {
+    const repository = makeRepository();
+    const request: DharmaSeedRequester = async (resource, payload) =>
+      payload.ids
+        ? { edition: edition(), items: {}, x_items: [] }
+        : indexResponse([], [resource === "talks" ? 99 : 98]);
+
+    await refreshCatalog({ repository, request, now: () => STARTED_AT });
+
+    const update = vi.mocked(repository.publishRefresh).mock.calls[0][1];
+    expect(update.removedTalkIds).toEqual([]);
+    expect(update.removedTeacherIds).toEqual([]);
   });
 
   it("retries transient failures with bounded exponential delays", async () => {
@@ -137,11 +151,13 @@ describe("isCatalogRefreshDue", () => {
   });
 });
 
-function makeRepository(options: { lease?: RefreshLease | null } = {}): CatalogRepository {
+function makeRepository(
+  options: { lease?: RefreshLease | null; activeVersion?: number } = {},
+): CatalogRepository {
   const lease =
     options.lease === undefined
       ? {
-          ...state(),
+          ...state({ activeVersion: options.activeVersion ?? 0 }),
           token: "refresh-token",
         }
       : options.lease;

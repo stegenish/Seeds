@@ -8,6 +8,13 @@
       "when": 1789285300680,
       "tag": "0000_hosted_catalog",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789289497489,
+      "tag": "0001_prune_initial_tombstones",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
-import nextEnv from "@next/env";
+import { loadLocalEnvironment } from "./load-local-env";
 
-nextEnv.loadEnvConfig(process.cwd());
+loadLocalEnvironment();
 
 const { refreshCatalog } = await import("../lib/server/catalog/refresh");
 

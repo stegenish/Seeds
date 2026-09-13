@@ -57,7 +57,7 @@ polite, shared metadata copy while preserving IndexedDB as the on-device cache.
   - Keep the existing replay-safe IndexedDB synchronization, switch its source
     entirely to the hosted catalog, and preserve offline and retry behavior.
 
-- [ ] `ops: release the shared catalog`
+- [x] `ops: release the shared catalog`
   - Validate migrations and synchronization on the development branch, apply
     the migration and bootstrap to production, configure Vercel secrets and the
     daily cron, run the complete quality suite, and verify the deployed path.

@@ -87,12 +87,15 @@ async function collectUpdate(
 ): Promise<CatalogUpdate> {
   const teachers = await collectResource("teachers", lease.sourceEditions.teachers, request, sleep);
   const talks = await collectResource("talks", lease.sourceEditions.talks, request, sleep);
+  const initialPublication = lease.activeVersion === 0;
   return {
     sourceEditions: { teachers: teachers.edition, talks: talks.edition },
     teachers: teachers.items,
     talks: talks.items,
-    removedTeacherIds: teachers.removedIds,
-    removedTalkIds: talks.removedIds,
+    // Historical upstream removals predate every hosted catalog version. They
+    // cannot remove anything from a fresh device and needlessly double storage.
+    removedTeacherIds: initialPublication ? [] : teachers.removedIds,
+    removedTalkIds: initialPublication ? [] : talks.removedIds,
   };
 }
 
