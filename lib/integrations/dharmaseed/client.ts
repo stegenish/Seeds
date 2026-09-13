@@ -3,14 +3,30 @@ import type { DharmaSeedResource } from "./adapter";
 const API_ROOT = "https://www.dharmaseed.org/api/1";
 const REQUEST_TIMEOUT_MS = 20_000;
 
-interface RemoteRequest {
+export interface DharmaSeedRequest {
   edition?: string;
   ids?: number[];
 }
 
+export interface DharmaSeedRequestOptions {
+  fetcher?: typeof fetch;
+  signal?: AbortSignal;
+}
+
+export class DharmaSeedRequestError extends Error {
+  constructor(
+    readonly status: number,
+    resource: DharmaSeedResource,
+  ) {
+    super(`Dharma Seed returned ${status} for ${resource}`);
+    this.name = "DharmaSeedRequestError";
+  }
+}
+
 export async function requestDharmaSeed(
   resource: DharmaSeedResource,
-  request: RemoteRequest,
+  request: DharmaSeedRequest,
+  options: DharmaSeedRequestOptions = {},
 ): Promise<unknown> {
   const body = new FormData();
   const wantsDetails = request.ids !== undefined;
@@ -24,11 +40,13 @@ export async function requestDharmaSeed(
     body.set("items", request.ids.join(","));
   }
 
-  const response = await fetch(`${API_ROOT}/${resource}/`, {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
+  const response = await (options.fetcher ?? fetch)(`${API_ROOT}/${resource}/`, {
     method: "POST",
     body,
     cache: "no-store",
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal,
     headers: {
       Accept: "application/json",
       "User-Agent": "Stillpoint/0.1 (unofficial personal Dharma Seed client)",
@@ -36,7 +54,7 @@ export async function requestDharmaSeed(
   });
 
   if (!response.ok) {
-    throw new Error(`Dharma Seed returned ${response.status} for ${resource}`);
+    throw new DharmaSeedRequestError(response.status, resource);
   }
 
   return response.json();

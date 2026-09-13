@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:contract": "node scripts/check-dharmaseed-api.mjs",
+    "catalog:refresh": "tsx scripts/refresh-catalog.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "lint": "eslint . --max-warnings=0",

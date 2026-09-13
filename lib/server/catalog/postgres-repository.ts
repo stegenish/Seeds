@@ -79,7 +79,7 @@ export class PostgresCatalogRepository implements CatalogRepository {
         throw new Error("The catalog refresh lease is no longer active");
       }
 
-      const changed = hasChanges(update);
+      const changed = state.activeVersion === 0 || hasChanges(update);
       const version = state.activeVersion + (changed ? 1 : 0);
       if (changed) {
         await writeTalks(transaction, update.talks, version);

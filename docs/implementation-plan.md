@@ -43,7 +43,7 @@ polite, shared metadata copy while preserving IndexedDB as the on-device cache.
     migration connection, refresh lease, catalog versions, normalized records,
     and removal tombstones.
 
-- [ ] `feat: synchronize the shared catalog atomically`
+- [x] `feat: synchronize the shared catalog atomically`
   - Fetch bounded upstream deltas, validate every payload, serialize refreshes,
     apply a complete update transactionally, retain the last good edition on
     failure, and expose a local bootstrap command.
