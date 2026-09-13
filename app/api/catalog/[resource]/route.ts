@@ -1,27 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ZodError } from "zod";
+import { after, NextRequest, NextResponse } from "next/server";
+import { DETAIL_BATCH_SIZE, catalogResourceSchema } from "@/lib/catalog/contracts";
 import {
-  parseIndexResponse,
-  parseTalkDetails,
-  parseTeacherDetails,
-  type DharmaSeedResource,
-} from "@/lib/integrations/dharmaseed/adapter";
-import { requestDharmaSeed } from "@/lib/integrations/dharmaseed/client";
-import { DETAIL_BATCH_SIZE } from "@/lib/catalog/contracts";
+  CatalogUnavailableError,
+  PostgresCatalogRepository,
+} from "@/lib/server/catalog/postgres-repository";
+import { isCatalogRefreshDue, refreshCatalog } from "@/lib/server/catalog/refresh";
+import type { CatalogRepository } from "@/lib/server/catalog/types";
 
-const RESOURCES = new Set<DharmaSeedResource>(["talks", "teachers"]);
+const INDEX_CACHE_CONTROL = "public, max-age=0, s-maxage=300, stale-while-revalidate=86400";
+const VERSIONED_CACHE_CONTROL =
+  "public, max-age=0, s-maxage=31536000, stale-while-revalidate=86400";
+
+export const maxDuration = 300;
+
+interface CatalogRouteDependencies {
+  repository: CatalogRepository;
+  now: () => Date;
+  scheduleRefresh: () => void;
+}
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ resource: string }> },
 ) {
+  return handleCatalogRequest(request, context, {
+    repository: new PostgresCatalogRepository(),
+    now: () => new Date(),
+    scheduleRefresh: scheduleBackgroundRefresh,
+  });
+}
+
+export async function handleCatalogRequest(
+  request: NextRequest,
+  context: { params: Promise<{ resource: string }> },
+  dependencies: CatalogRouteDependencies,
+) {
   const { resource: rawResource } = await context.params;
-  if (!RESOURCES.has(rawResource as DharmaSeedResource)) {
+  const parsedResource = catalogResourceSchema.safeParse(rawResource);
+  if (!parsedResource.success) {
     return NextResponse.json({ error: "Unknown catalog resource" }, { status: 404 });
   }
 
-  const resource = rawResource as DharmaSeedResource;
-  const edition = request.nextUrl.searchParams.get("edition") || undefined;
+  const edition = request.nextUrl.searchParams.get("edition");
   const snapshot = request.nextUrl.searchParams.get("snapshot");
   if ((edition?.length ?? 0) > 100 || (snapshot?.length ?? 0) > 100) {
     return NextResponse.json({ error: "Edition is too long" }, { status: 400 });
@@ -32,41 +52,49 @@ export async function GET(
   }
 
   try {
-    const payload = await requestDharmaSeed(resource, {
-      edition: idsResult.ids ? undefined : edition,
-      ids: idsResult.ids,
-    });
-
+    const state = await dependencies.repository.getState();
     const result = idsResult.ids
-      ? resource === "talks"
-        ? parseTalkDetails(payload)
-        : parseTeacherDetails(payload)
-      : parseIndexResponse(payload);
-
+      ? parsedResource.data === "talks"
+        ? await dependencies.repository.getTalkDetails(idsResult.ids)
+        : await dependencies.repository.getTeacherDetails(idsResult.ids)
+      : await dependencies.repository.getIndex(parsedResource.data, parseCatalogVersion(edition));
+    if (isCatalogRefreshDue(state, dependencies.now())) {
+      dependencies.scheduleRefresh();
+    }
+    const snapshotVersion = parseCatalogVersion(snapshot);
+    const versionedDetails =
+      idsResult.ids !== undefined &&
+      snapshotVersion !== null &&
+      snapshotVersion <= state.activeVersion;
     return NextResponse.json(result, {
       headers: {
-        // IndexedDB and edition deltas own caching; independent CDN lifetimes
-        // cannot safely describe a synchronized catalog snapshot.
-        "Cache-Control": "no-store",
+        "Cache-Control": versionedDetails ? VERSIONED_CACHE_CONTROL : INDEX_CACHE_CONTROL,
       },
     });
   } catch (error) {
-    const message =
-      error instanceof ZodError
-        ? "Dharma Seed returned an unexpected response"
-        : "Dharma Seed is temporarily unavailable";
-
-    return NextResponse.json({ error: message }, { status: 502 });
+    if (error instanceof CatalogUnavailableError) {
+      return NextResponse.json(
+        { error: "The shared catalog is being prepared. Please retry shortly." },
+        { status: 503, headers: { "Cache-Control": "no-store", "Retry-After": "60" } },
+      );
+    }
+    reportServerError("catalog query", error);
+    return NextResponse.json(
+      { error: "The shared catalog is temporarily unavailable. Please retry." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   }
 }
 
+export function parseCatalogVersion(raw: string | null): number | null {
+  if (!raw || !/^(0|[1-9]\d*)$/.test(raw)) return null;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) ? value : null;
+}
+
 function parseIds(rawIds: string | null): { ids?: number[]; error?: string } {
-  if (rawIds === null) {
-    return {};
-  }
-
+  if (rawIds === null) return {};
   const ids = rawIds.split(",").filter(Boolean).map(Number);
-
   if (
     ids.length === 0 ||
     ids.length > DETAIL_BATCH_SIZE ||
@@ -74,6 +102,20 @@ function parseIds(rawIds: string | null): { ids?: number[]; error?: string } {
   ) {
     return { error: `ids must contain 1–${DETAIL_BATCH_SIZE} positive integers` };
   }
-
   return { ids: [...new Set(ids)] };
+}
+
+function reportServerError(operation: string, error: unknown): void {
+  const name = error instanceof Error ? error.name : "UnknownError";
+  console.error(`Catalog ${operation} failed (${name}).`);
+}
+
+function scheduleBackgroundRefresh(): void {
+  after(async () => {
+    try {
+      await refreshCatalog();
+    } catch (error) {
+      reportServerError("background refresh", error);
+    }
+  });
 }

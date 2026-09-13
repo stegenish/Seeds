@@ -48,7 +48,7 @@ polite, shared metadata copy while preserving IndexedDB as the on-device cache.
     apply a complete update transactionally, retain the last good edition on
     failure, and expose a local bootstrap command.
 
-- [ ] `feat: serve the versioned shared catalog`
+- [x] `feat: serve the versioned shared catalog`
   - Serve bounded full and incremental indexes and detail pages from Neon,
     trigger stale refreshes after the response, add a protected daily refresh
     route, and cache version-addressed detail responses at the CDN.
