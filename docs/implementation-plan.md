@@ -53,7 +53,7 @@ polite, shared metadata copy while preserving IndexedDB as the on-device cache.
     trigger stale refreshes after the response, add a protected daily refresh
     route, and cache version-addressed detail responses at the CDN.
 
-- [ ] `feat: hydrate devices from the shared catalog`
+- [x] `feat: hydrate devices from the shared catalog`
   - Keep the existing replay-safe IndexedDB synchronization, switch its source
     entirely to the hosted catalog, and preserve offline and retry behavior.
 

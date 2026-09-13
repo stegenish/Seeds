@@ -143,7 +143,7 @@ async function syncResource(
 
 async function fetchJson(url: URL, fetcher: typeof fetch, signal?: AbortSignal): Promise<unknown> {
   signal?.throwIfAborted();
-  const response = await fetcher(url, { signal, cache: "no-store" });
+  const response = await fetcher(url, { signal });
   signal?.throwIfAborted();
   if (!response.ok) throw new Error(`Archive request failed (${response.status}). Please retry.`);
   return response.json();

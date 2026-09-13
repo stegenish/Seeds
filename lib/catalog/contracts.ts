@@ -15,10 +15,15 @@ export interface CatalogDetails<T> {
   removedIds: number[];
 }
 
-// Upstream editions are UTC timestamps. Equal opaque editions remain compatible;
-// an unknown different format must not silently advance a checkpoint.
+// Hosted catalog editions are monotonic integers; upstream editions are UTC
+// timestamps. Equal opaque editions remain compatible, while unknown differing
+// formats must never silently advance a checkpoint.
 export function isCompatibleEdition(received: string, expected: string): boolean {
   if (received === expected) return true;
+  const version = /^(0|[1-9]\d*)$/;
+  if (version.test(received) && version.test(expected)) {
+    return BigInt(received) > BigInt(expected);
+  }
   const timestamp = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
   return timestamp.test(received) && timestamp.test(expected) && received > expected;
 }

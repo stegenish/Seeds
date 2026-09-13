@@ -49,14 +49,15 @@ describe("syncCatalog", () => {
         removedIds: [],
       },
     ];
-    const fetcher = vi.fn(async () =>
+    const fetcher = vi.fn<typeof fetch>(async () =>
       Response.json(responses.shift(), { status: 200 }),
-    ) as unknown as typeof fetch;
+    );
 
     await syncCatalog({ fetcher });
 
     expect((await getAllTeachers()).map((teacher) => teacher.id)).toEqual([10]);
     expect((await getAllTalks()).map((talk) => talk.id)).toEqual([1]);
     expect(fetcher).toHaveBeenCalledTimes(4);
+    expect(fetcher.mock.calls.every(([, options]) => options?.cache === undefined)).toBe(true);
   });
 });
