@@ -1,0 +1,66 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Browser as Stillpoint in browser
+    participant IDB as IndexedDB
+    participant CDN as Vercel CDN
+    participant API as Next.js catalog routes
+    participant Neon as Neon Postgres
+    participant Cron as Vercel Cron
+    participant DS as Dharma Seed
+
+    rect rgb(244, 248, 252)
+        Note over User,Neon: Device load and incremental synchronization
+        User->>Browser: Open the app
+        Browser->>IDB: Read talks, teachers, and local editions
+        IDB-->>Browser: Return the durable device catalog
+        Browser-->>User: Offer listening immediately when cached data exists
+        Browser->>CDN: GET index with local edition
+        alt CDN hit
+            CDN-->>Browser: Changed and removed IDs plus hosted edition
+        else CDN miss
+            CDN->>API: Forward catalog request
+            API->>Neon: Read state and version delta
+            Neon-->>API: Index response
+            API-->>CDN: Cacheable JSON
+            CDN-->>Browser: Index response
+            opt Hosted data is older than 24 hours
+                API->>API: Schedule refresh after the response
+            end
+        end
+        loop Detail batches of at most 500 IDs
+            Browser->>CDN: GET details with target snapshot
+            alt CDN hit
+                CDN-->>Browser: Versioned details
+            else CDN miss
+                CDN->>API: Forward detail request
+                API->>Neon: Read requested fields by ID
+                Neon-->>API: Versioned details and removals
+                API-->>CDN: Long-lived cacheable JSON
+                CDN-->>Browser: Versioned details
+            end
+            Browser->>IDB: Upsert and remove, then checkpoint progress
+        end
+        Browser->>IDB: Commit local edition and clear checkpoint
+        User->>Browser: Play a selected recording
+        Browser->>DS: Stream audio directly
+    end
+
+    rect rgb(252, 248, 240)
+        Note over Cron,DS: Shared catalog refresh, separate from device synchronization
+        alt Daily schedule
+            Cron->>API: GET protected refresh endpoint
+        else Stale-read safety net
+            API->>API: Start scheduled background refresh
+        end
+        API->>Neon: Try to acquire the refresh lease
+        alt Lease acquired
+            Neon-->>API: Current source editions and hosted version
+            API->>DS: Fetch talk and teacher edition deltas
+            DS-->>API: Changed indexes and bounded details
+            API->>Neon: Atomically publish both resources and tombstones
+            Neon-->>API: New last known-good hosted version
+        else Refresh already running or backing off
+            Neon-->>API: No lease, keep serving the active version
+        end
+    end

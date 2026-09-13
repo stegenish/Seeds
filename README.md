@@ -77,6 +77,7 @@ pnpm test:contract
 - `components/` owns presentation and playback behavior.
 
 See [the implementation plan](docs/implementation-plan.md), [architecture decision 0001](docs/decisions/0001-local-first-pwa.md), and [architecture decision 0003](docs/decisions/0003-shared-neon-catalog.md) for the rationale and milestone history.
+For a guided tour of the runtime data flow, read [Catalog caching and data flow](docs/catalog-caching-overview.md).
 The [first-release verification record](docs/release-verification.md) captures the checks performed against the initial implementation.
 The [repair journal](docs/repair-progress.md) tracks review fixes and verification. [Decision 0002](docs/decisions/0002-catalog-consistency.md) explains replay-safe synchronization, metadata cache ownership, and classification migrations.
 
