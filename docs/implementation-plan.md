@@ -29,6 +29,39 @@ Deliver an installable, mobile-first web app that selects a random public Dharma
 - [x] `feat: make listening a one-tap mobile flow`
   - Put compact play actions first, remove editorially featured topics, make topic and teacher refinements searchable, keep the displayed and playing talk aligned, and offer continuation of the latest recording.
 
+## Shared catalog milestones
+
+These milestones replace direct per-device Dharma Seed synchronization with one
+polite, shared metadata copy while preserving IndexedDB as the on-device cache.
+
+- [x] `docs: plan the shared catalog architecture`
+  - Record cache ownership, refresh triggering, atomic publication, recovery,
+    pagination, and privacy decisions.
+
+- [ ] `feat: add the hosted catalog schema`
+  - Add a migration-managed Neon schema, pooled runtime connection, direct
+    migration connection, refresh lease, catalog versions, normalized records,
+    and removal tombstones.
+
+- [ ] `feat: synchronize the shared catalog atomically`
+  - Fetch bounded upstream deltas, validate every payload, serialize refreshes,
+    apply a complete update transactionally, retain the last good edition on
+    failure, and expose a local bootstrap command.
+
+- [ ] `feat: serve the versioned shared catalog`
+  - Serve bounded full and incremental indexes and detail pages from Neon,
+    trigger stale refreshes after the response, add a protected daily refresh
+    route, and cache version-addressed detail responses at the CDN.
+
+- [ ] `feat: hydrate devices from the shared catalog`
+  - Keep the existing replay-safe IndexedDB synchronization, switch its source
+    entirely to the hosted catalog, and preserve offline and retry behavior.
+
+- [ ] `ops: release the shared catalog`
+  - Validate migrations and synchronization on the development branch, apply
+    the migration and bootstrap to production, configure Vercel secrets and the
+    daily cron, run the complete quality suite, and verify the deployed path.
+
 ## Product semantics
 
 ### Recording kinds

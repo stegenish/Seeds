@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-09-12
+- Amended by: 0003
 
 IndexedDB plus upstream edition deltas is the metadata cache. Catalog HTTP responses now use `no-store`: two small index requests per visit are preferable to independent CDN lifetimes that can checkpoint stale details. Detail URLs include a snapshot parameter to bypass pre-existing first-release CDN entries. Audio remains streamed directly from Dharma Seed.
 
