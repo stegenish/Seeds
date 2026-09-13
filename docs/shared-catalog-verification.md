@@ -13,7 +13,7 @@ Verified on 2026-09-13.
 ## Vercel
 
 - Linked project: `stegenishs-projects/seeds`.
-- Production deployment: `dpl_qwA4RQWzVtCo4T2dCuMWBQQR72na` (`Ready`).
+- Both the CLI validation deployment and the Git-connected deployment from commit `ac73e22` reached `Ready` production status.
 - Production alias: <https://seeds-smoky.vercel.app>.
 - Production secrets are configured for `DATABASE_URL` and `CRON_SECRET`; values were never printed or committed.
 - `vercel.json` registers the protected `/api/catalog/refresh` route once daily.
