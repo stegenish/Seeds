@@ -38,7 +38,7 @@ polite, shared metadata copy while preserving IndexedDB as the on-device cache.
   - Record cache ownership, refresh triggering, atomic publication, recovery,
     pagination, and privacy decisions.
 
-- [ ] `feat: add the hosted catalog schema`
+- [x] `feat: add the hosted catalog schema`
   - Add a migration-managed Neon schema, pooled runtime connection, direct
     migration connection, refresh lease, catalog versions, normalized records,
     and removal tombstones.
