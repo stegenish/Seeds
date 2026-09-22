@@ -67,7 +67,7 @@ a:focus-visible {
 }
 
 .app-shell.has-player {
-  padding-bottom: 7.5rem;
+  padding-bottom: 11rem;
 }
 
 .topbar {
@@ -724,6 +724,29 @@ select {
   font-size: 0.72rem;
 }
 
+.player-seek-controls {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.player-seek-controls button {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.25rem;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 0.7rem;
+  background: rgb(255 255 255 / 8%);
+  color: white;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.player-seek-controls button:active {
+  background: rgb(255 255 255 / 16%);
+}
+
 .player audio {
   grid-column: 1 / -1;
   width: 100%;
@@ -782,13 +805,9 @@ select {
     right: 1.5rem;
     bottom: 1.5rem;
     left: 1.5rem;
-    grid-template-columns: auto minmax(12rem, 1fr) minmax(20rem, 0.8fr) auto;
+    grid-template-columns: auto minmax(12rem, 1fr) auto;
     max-width: 68rem;
     margin: auto;
-  }
-
-  .player audio {
-    grid-column: auto;
   }
 }
 

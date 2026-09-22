@@ -89,6 +89,23 @@ it("throttles progress while playing but flushes immediately on backgrounding", 
   expect(readPlaybackProgress(1)).toBe(12);
 });
 
+it("seeks backward and forward by 15 seconds and 1 minute without crossing the recording bounds", () => {
+  const { audio } = setup();
+  audio.currentTime = 70;
+
+  fireEvent.click(screen.getByRole("button", { name: "Back 1 minute" }));
+  expect(audio.currentTime).toBe(10);
+  fireEvent.click(screen.getByRole("button", { name: "Back 15 seconds" }));
+  expect(audio.currentTime).toBe(0);
+
+  fireEvent.click(screen.getByRole("button", { name: "Forward 15 seconds" }));
+  expect(audio.currentTime).toBe(15);
+  fireEvent.click(screen.getByRole("button", { name: "Forward 1 minute" }));
+  expect(audio.currentTime).toBe(75);
+  fireEvent.click(screen.getByRole("button", { name: "Forward 1 minute" }));
+  expect(audio.currentTime).toBe(100);
+});
+
 it("wires media-session controls and clears them when the player closes", async () => {
   const handlers = new Map<string, MediaSessionActionHandler | null>();
   const session = {
@@ -116,9 +133,14 @@ it("wires media-session controls and clears them when the player closes", async 
   expect(play).toHaveBeenCalled();
   act(() => handlers.get("pause")?.({ action: "pause" }));
   expect(pause).toHaveBeenCalled();
+  audio.currentTime = 50;
+  act(() => handlers.get("seekbackward")?.({ action: "seekbackward", seekOffset: 20 }));
+  expect(audio.currentTime).toBe(30);
+  act(() => handlers.get("seekforward")?.({ action: "seekforward" }));
+  expect(audio.currentTime).toBe(45);
   act(() => handlers.get("seekto")?.({ action: "seekto", seekTime: 42 }));
   expect(audio.currentTime).toBe(42);
   unmount();
   expect(session.metadata).toBeNull();
-  expect([...handlers.values()]).toEqual([null, null, null]);
+  expect([...handlers.values()]).toEqual([null, null, null, null, null]);
 });

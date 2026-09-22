@@ -41,6 +41,17 @@ export const PersistentPlayer = forwardRef<
       );
     }
   }, []);
+
+  const seekBy = useCallback((seconds: number) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const currentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+    const targetTime = Math.max(0, currentTime + seconds);
+    audio.currentTime = Number.isFinite(audio.duration)
+      ? Math.min(targetTime, audio.duration)
+      : targetTime;
+  }, []);
+
   useImperativeHandle(ref, () => ({ play: requestPlay }), [requestPlay]);
 
   useEffect(() => {
@@ -81,6 +92,8 @@ export const PersistentPlayer = forwardRef<
     const handlers: Partial<Record<MediaSessionAction, MediaSessionActionHandler>> = {
       play: () => void requestPlay(),
       pause: () => audioRef.current?.pause(),
+      seekbackward: (details) => seekBy(-(details.seekOffset ?? 15)),
+      seekforward: (details) => seekBy(details.seekOffset ?? 15),
       seekto: (details) => {
         const audio = audioRef.current;
         if (audio && details.seekTime !== undefined && Number.isFinite(audio.duration))
@@ -105,7 +118,7 @@ export const PersistentPlayer = forwardRef<
         }
       }
     };
-  }, [talk.title, teacherNames, requestPlay]);
+  }, [talk.title, teacherNames, requestPlay, seekBy]);
 
   function togglePlayback() {
     const audio = audioRef.current;
@@ -142,6 +155,23 @@ export const PersistentPlayer = forwardRef<
         <strong>{talk.title}</strong>
         <span aria-live="polite">{playbackMessage ?? teacherNames}</span>
       </div>
+      <button className="player-close" type="button" onClick={onClose} aria-label="Close player">
+        ×
+      </button>
+      <div className="player-seek-controls" aria-label="Seek controls">
+        <button type="button" onClick={() => seekBy(-60)} aria-label="Back 1 minute">
+          −1 min
+        </button>
+        <button type="button" onClick={() => seekBy(-15)} aria-label="Back 15 seconds">
+          −15 sec
+        </button>
+        <button type="button" onClick={() => seekBy(15)} aria-label="Forward 15 seconds">
+          +15 sec
+        </button>
+        <button type="button" onClick={() => seekBy(60)} aria-label="Forward 1 minute">
+          +1 min
+        </button>
+      </div>
       <audio
         ref={audioRef}
         src={talk.audioUrl}
@@ -172,9 +202,6 @@ export const PersistentPlayer = forwardRef<
         }}
         onTimeUpdate={storeProgress}
       />
-      <button className="player-close" type="button" onClick={onClose} aria-label="Close player">
-        ×
-      </button>
     </aside>
   );
 });

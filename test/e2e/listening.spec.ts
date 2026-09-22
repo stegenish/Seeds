@@ -77,6 +77,39 @@ test("active refinements remain readable at narrow phone widths", async ({ page 
   await page.screenshot({ path: "test-results/refinement-360.png", fullPage: true });
 });
 
+test("mobile player offers bounded 15-second and 1-minute seek controls", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Play a Dhamma talk/ }).click();
+  await page.getByRole("button", { name: "Pause", exact: true }).click();
+  const audio = page.locator("audio");
+  await audio.evaluate((element: HTMLAudioElement) => {
+    element.currentTime = 20;
+  });
+
+  await page.getByRole("button", { name: "Back 15 seconds" }).click();
+  await expect
+    .poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime))
+    .toBe(5);
+  await page.getByRole("button", { name: "Back 1 minute" }).click();
+  await expect
+    .poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime))
+    .toBe(0);
+  await page.getByRole("button", { name: "Forward 15 seconds" }).click();
+  await expect
+    .poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime))
+    .toBe(15);
+  await page.getByRole("button", { name: "Forward 1 minute" }).click();
+  await expect
+    .poll(() => audio.evaluate((element: HTMLAudioElement) => element.currentTime))
+    .toBe(60);
+  await expect(page.locator(".player-seek-controls button")).toHaveCount(4);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({ path: "test-results/player-seek-controls-360.png", fullPage: true });
+});
+
 test("one tap plays audio; refine, reload, next, close, and favorites preserve coherent state", async ({
   page,
 }) => {
