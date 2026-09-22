@@ -8,6 +8,8 @@ import {
   saveLastPlayedTalkId,
   savePlaybackProgress,
   toggleFavorite,
+  readFavoriteTeachers,
+  toggleFavoriteTeacher,
 } from "./preferences";
 
 describe("local preferences", () => {
@@ -20,6 +22,13 @@ describe("local preferences", () => {
     expect(toggleFavorite(7)).toEqual([7]);
     expect(toggleFavorite(7)).toEqual([]);
     expect(readFavorites()).toEqual([]);
+  });
+
+  it("stores favorite teachers separately from favorite recordings", () => {
+    expect(toggleFavoriteTeacher(12)).toEqual([12]);
+    expect(readFavoriteTeachers()).toEqual([12]);
+    expect(readFavorites()).toEqual([]);
+    expect(toggleFavoriteTeacher(12)).toEqual([]);
   });
 
   it("stores non-negative whole-second playback progress", () => {

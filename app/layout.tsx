@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { PwaRegistration } from "@/components/pwa-registration";
+import { SiteShell } from "@/components/site-shell";
+import { StillpointProvider } from "@/components/stillpoint-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,7 +23,9 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     <html lang="en">
       <body>
         <PwaRegistration />
-        {children}
+        <StillpointProvider>
+          <SiteShell>{children}</SiteShell>
+        </StillpointProvider>
       </body>
     </html>
   );

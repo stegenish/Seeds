@@ -1,19 +1,23 @@
 import { ExternalLink, Heart, RefreshCw } from "lucide-react";
-import type { Talk } from "@/lib/domain/talk";
+import type { Talk, Teacher } from "@/lib/domain/talk";
 import { getTopic } from "@/lib/domain/topics";
 import { formatDate, formatDuration } from "@/lib/presentation/format";
 
 export function TalkSelection({
   talk,
-  teacherNames,
+  teachers,
+  favoriteTeacherIds,
   isFavorite,
   onFavorite,
+  onTeacherFavorite,
   onPlayAnother,
 }: {
   talk: Talk;
-  teacherNames: string;
+  teachers: ReadonlyMap<number, Teacher>;
+  favoriteTeacherIds: number[];
   isFavorite: boolean;
   onFavorite: (id: number) => void;
+  onTeacherFavorite: (id: number) => void;
   onPlayAnother: () => void;
 }) {
   return (
@@ -31,7 +35,28 @@ export function TalkSelection({
       </div>
       <div>
         <h2>{talk.title}</h2>
-        <p className="teacher-name">{teacherNames}</p>
+        <div className="teacher-attributions">
+          {talk.teacherIds.length ? (
+            talk.teacherIds.map((id) => {
+              const teacher = teachers.get(id);
+              const favorite = favoriteTeacherIds.includes(id);
+              return teacher ? (
+                <span key={id}>
+                  <span>{teacher.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => onTeacherFavorite(id)}
+                    aria-label={`${favorite ? "Remove" : "Add"} ${teacher.name} ${favorite ? "from" : "to"} favorite teachers`}
+                  >
+                    <Heart size={15} fill={favorite ? "currentColor" : "none"} />
+                  </button>
+                </span>
+              ) : null;
+            })
+          ) : (
+            <span>Teacher attribution loading</span>
+          )}
+        </div>
       </div>
       <div className="talk-meta">
         {talk.durationMinutes ? <span>{formatDuration(talk.durationMinutes)}</span> : null}

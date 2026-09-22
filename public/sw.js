@@ -1,9 +1,13 @@
-const CACHE_NAME = "stillpoint-shell-v3";
+const CACHE_NAME = "stillpoint-shell-v4";
 const SHELL = ["/manifest.webmanifest", "/favicon.svg"];
+const PAGES = ["/", "/favorites"];
 
-async function cachePage(response) {
-  if (!response.ok) throw new Error("Cannot cache an unsuccessful page");
-  const html = await response.clone().text();
+async function cachePages(entries) {
+  if (entries.some(([, response]) => !response.ok))
+    throw new Error("Cannot cache an unsuccessful page");
+  const html = (await Promise.all(entries.map(([, response]) => response.clone().text()))).join(
+    "\n",
+  );
   const assets = [
     ...new Set(
       Array.from(html.matchAll(/(?:src|href)=["'](\/_next\/static\/[^"']+)["']/g), (match) =>
@@ -14,13 +18,13 @@ async function cachePage(response) {
   const cache = await caches.open(CACHE_NAME);
   // Commit HTML only after all its startup dependencies have been cached.
   await cache.addAll([...SHELL, ...assets]);
-  await cache.put("/", response.clone());
+  await Promise.all(entries.map(([path, response]) => cache.put(path, response.clone())));
 }
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    fetch("/", { cache: "reload" })
-      .then(cachePage)
+    Promise.all(PAGES.map(async (path) => [path, await fetch(path, { cache: "reload" })]))
+      .then(cachePages)
       .then(() => self.skipWaiting()),
   );
 });
@@ -48,15 +52,21 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/api/")
   )
     return;
-  if (event.request.mode === "navigate" && url.pathname === "/") {
+  if (event.request.mode === "navigate" && PAGES.includes(url.pathname)) {
     event.respondWith(
       fetch(event.request)
         .then(async (response) => {
-          if (response.ok) event.waitUntil(cachePage(response).catch(() => undefined));
-          else if (response.status >= 500) return (await caches.match("/")) || response;
+          if (response.ok)
+            event.waitUntil(
+              caches
+                .open(CACHE_NAME)
+                .then((cache) => cache.put(url.pathname, response.clone()))
+                .catch(() => undefined),
+            );
+          else if (response.status >= 500) return (await caches.match(url.pathname)) || response;
           return response;
         })
-        .catch(async () => (await caches.match("/")) || Response.error()),
+        .catch(async () => (await caches.match(url.pathname)) || Response.error()),
     );
     return;
   }

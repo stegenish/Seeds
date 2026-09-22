@@ -2,6 +2,7 @@ import { readStoredValue, writeStoredValue } from "./safe-storage";
 
 const HISTORY_KEY = "stillpoint:selection-history";
 const FAVORITES_KEY = "stillpoint:favorites";
+const FAVORITE_TEACHERS_KEY = "stillpoint:favorite-teachers";
 const PROGRESS_KEY = "stillpoint:playback-progress";
 const LAST_PLAYED_KEY = "stillpoint:last-played-talk";
 
@@ -30,6 +31,19 @@ export function toggleFavorite(talkId: number, storage?: Storage): number[] {
   }
   const nextFavorites = [...favorites];
   writeStoredValue(FAVORITES_KEY, JSON.stringify(nextFavorites), storage);
+  return nextFavorites;
+}
+
+export function readFavoriteTeachers(storage?: Storage): number[] {
+  return readNumberArray(storage, FAVORITE_TEACHERS_KEY);
+}
+
+export function toggleFavoriteTeacher(teacherId: number, storage?: Storage): number[] {
+  const favorites = new Set(readFavoriteTeachers(storage));
+  if (favorites.has(teacherId)) favorites.delete(teacherId);
+  else favorites.add(teacherId);
+  const nextFavorites = [...favorites];
+  writeStoredValue(FAVORITE_TEACHERS_KEY, JSON.stringify(nextFavorites), storage);
   return nextFavorites;
 }
 

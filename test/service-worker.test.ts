@@ -8,7 +8,7 @@ function worker() {
   const cacheStorage = {
     match: vi.fn(async (): Promise<Response | undefined> => undefined),
     open: vi.fn(async () => cache),
-    keys: vi.fn(async () => ["another-app", "stillpoint-shell-v2", "stillpoint-shell-v3"]),
+    keys: vi.fn(async () => ["another-app", "stillpoint-shell-v3", "stillpoint-shell-v4"]),
     delete: vi.fn(async () => true),
   };
   const fetcher = vi.fn(
@@ -57,7 +57,7 @@ it("caches fetched Next.js assets (R5)", async () => {
   expect(cache.put).toHaveBeenCalled();
 });
 it("installs a complete shell before activating", async () => {
-  const { fire, cache, skipWaiting } = worker();
+  const { fire, cache, fetcher, skipWaiting } = worker();
   await fire("install");
   expect(cache.addAll).toHaveBeenCalledWith([
     "/manifest.webmanifest",
@@ -65,6 +65,8 @@ it("installs a complete shell before activating", async () => {
     "/_next/static/app.js",
     "/_next/static/app.css",
   ]);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(cache.put).toHaveBeenCalledWith("/favorites", expect.any(Response));
   expect(cache.addAll.mock.invocationCallOrder[0]).toBeLessThan(
     cache.put.mock.invocationCallOrder[0]!,
   );
@@ -73,7 +75,7 @@ it("installs a complete shell before activating", async () => {
 it("removes only obsolete app-owned caches on upgrade", async () => {
   const { fire, cacheStorage, claim } = worker();
   await fire("activate");
-  expect(cacheStorage.delete).toHaveBeenCalledExactlyOnceWith("stillpoint-shell-v2");
+  expect(cacheStorage.delete).toHaveBeenCalledExactlyOnceWith("stillpoint-shell-v3");
   expect(claim).toHaveBeenCalled();
 });
 it("keeps the previous page if the network returns a server error", async () => {

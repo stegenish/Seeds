@@ -9,6 +9,19 @@ import { getAllTalks, getAllTeachers } from "@/lib/catalog/database";
 import { syncCatalog } from "@/lib/catalog/sync";
 import { useCatalog } from "@/lib/catalog/use-catalog";
 import { ListenerApp } from "./listener-app";
+import { SiteShell } from "./site-shell";
+import { StillpointProvider } from "./stillpoint-provider";
+vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
+
+function App() {
+  return (
+    <StillpointProvider>
+      <SiteShell>
+        <ListenerApp />
+      </SiteShell>
+    </StillpointProvider>
+  );
+}
 
 beforeEach(() => {
   vi.mocked(getAllTalks).mockResolvedValue([makeTalk()]);
@@ -23,7 +36,7 @@ afterEach(() => {
 it("R3: synchronizes under StrictMode using an active signal", async () => {
   render(
     <StrictMode>
-      <ListenerApp />
+      <App />
     </StrictMode>,
   );
   await screen.findByText(/ready$/);
@@ -42,14 +55,14 @@ it("R2: removes withdrawn recordings from UI eligibility", async () => {
       removedIds: [1],
     });
   });
-  render(<ListenerApp />);
+  render(<App />);
   await screen.findByText(/ready$/);
   expect(screen.getByRole("button", { name: /Play a Dhamma talk/ })).toBeDisabled();
 });
 it("R9: exposes an error and retries without discarding cached listening", async () => {
   const user = userEvent.setup();
   vi.mocked(syncCatalog).mockRejectedValueOnce(new Error("Connection interrupted"));
-  render(<ListenerApp />);
+  render(<App />);
   expect(await screen.findByRole("alert")).toHaveTextContent("Connection interrupted");
   expect(screen.getByRole("button", { name: /Play a Dhamma talk/ })).toBeEnabled();
   await user.click(screen.getByRole("button", { name: "Retry archive sync" }));
@@ -59,7 +72,7 @@ it("R9: exposes an error and retries without discarding cached listening", async
 it("stops claiming to prepare after an empty-device failure", async () => {
   vi.mocked(getAllTalks).mockResolvedValue([]);
   vi.mocked(syncCatalog).mockRejectedValue(new Error("Offline"));
-  render(<ListenerApp />);
+  render(<App />);
   await screen.findByRole("alert");
   expect(screen.queryByText("Preparing…")).not.toBeInTheDocument();
 });

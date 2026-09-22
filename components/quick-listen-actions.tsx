@@ -1,4 +1,4 @@
-import { AudioLines, BookOpenText, Play, Shuffle } from "lucide-react";
+import { AudioLines, BookOpenText, ChevronDown, Play, Shuffle } from "lucide-react";
 import type { RecordingKindFilter, Talk } from "@/lib/domain/talk";
 
 const OPTIONS: Array<{
@@ -18,6 +18,7 @@ export function QuickListenActions({
   lastTalk,
   lastTeacherNames,
   onListen,
+  onChooseTeacher,
   onContinue,
 }: {
   counts: Record<RecordingKindFilter, number>;
@@ -26,6 +27,7 @@ export function QuickListenActions({
   lastTalk: Talk | null;
   lastTeacherNames: string;
   onListen: (kind: RecordingKindFilter) => void;
+  onChooseTeacher: (kind: RecordingKindFilter) => void;
   onContinue: () => void;
 }) {
   return (
@@ -46,28 +48,41 @@ export function QuickListenActions({
 
       <div className="quick-listen-grid">
         {OPTIONS.map(({ kind, label, icon: Icon }) => (
-          <button
-            className="quick-listen-button"
-            type="button"
+          <div
+            className="quick-listen-control"
             key={kind}
-            onClick={() => onListen(kind)}
-            disabled={counts[kind] === 0}
             data-active={activeKind === kind || undefined}
           >
-            <span className="quick-icon" aria-hidden="true">
-              <Icon size={20} />
-            </span>
-            <span>
-              <strong>{label}</strong>
-              <small>
-                {counts[kind] > 0
-                  ? `${counts[kind].toLocaleString()} available`
-                  : isPreparing
-                    ? "Preparing…"
-                    : "No matches"}
-              </small>
-            </span>
-          </button>
+            <button
+              className="quick-listen-button"
+              type="button"
+              onClick={() => onListen(kind)}
+              disabled={counts[kind] === 0}
+            >
+              <span className="quick-icon" aria-hidden="true">
+                <Icon size={20} />
+              </span>
+              <span>
+                <strong>{label}</strong>
+                <small>
+                  {counts[kind] > 0
+                    ? `${counts[kind].toLocaleString()} available`
+                    : isPreparing
+                      ? "Preparing…"
+                      : "No matches"}
+                </small>
+              </span>
+            </button>
+            <button
+              className="quick-teacher-button"
+              type="button"
+              onClick={() => onChooseTeacher(kind)}
+              disabled={isPreparing}
+              aria-label={`Choose a favorite teacher for ${label.toLowerCase()}`}
+            >
+              <ChevronDown size={21} aria-hidden="true" />
+            </button>
+          </div>
         ))}
       </div>
     </section>

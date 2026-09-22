@@ -13,6 +13,8 @@ The web app is designed to be installed from Chrome on Android and deployed to V
 - Combines kind, teacher, language, and duration filters; selected topics use OR semantics.
 - Downloads public metadata from a shared Neon catalog into IndexedDB and applies later updates incrementally.
 - Stores selection history, favorites, and playback progress only on the device.
+- Organizes favorite recordings by type and favorite teachers on a dedicated page.
+- Lets each quick-listen action choose a favorite teacher without losing other refinements.
 - Offers a direct continuation of the most recently played recording.
 - Streams original, unmodified audio directly from Dharma Seed.
 - Preserves teacher attribution, original-source links, and license information.

@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { saveLastPlayedTalkId } from "@/lib/user/preferences";
 import { makeTalk, makeTeacher } from "@/test/factories";
+import { SiteShell } from "./site-shell";
+import { StillpointProvider } from "./stillpoint-provider";
+
+vi.mock("next/navigation", () => ({ usePathname: () => "/" }));
 
 vi.mock("@/lib/catalog/database", () => ({
   getAllTalks: vi.fn(),
@@ -22,6 +26,16 @@ const talks = [
   makeTalk({ id: 3, title: "A second Dhamma talk" }),
 ];
 
+function renderApp() {
+  return render(
+    <StillpointProvider>
+      <SiteShell>
+        <ListenerApp />
+      </SiteShell>
+    </StillpointProvider>,
+  );
+}
+
 describe("ListenerApp", () => {
   beforeEach(() => {
     vi.mocked(getAllTalks).mockResolvedValue(talks);
@@ -34,9 +48,9 @@ describe("ListenerApp", () => {
   });
 
   it("links to Dharma Seed's official donation page", async () => {
-    render(<ListenerApp />);
+    renderApp();
 
-    expect(screen.getByRole("link", { name: "Donate to DharmaSeed" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Donate" })).toHaveAttribute(
       "href",
       "https://dharmaseed.org/about/donation/",
     );
@@ -48,7 +62,7 @@ describe("ListenerApp", () => {
       throw new DOMException("Full", "QuotaExceededError");
     });
     const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
-    render(<ListenerApp />);
+    renderApp();
     await user.click(await screen.findByRole("button", { name: /Play a Dhamma talk/ }));
     expect(playSpy).toHaveBeenCalled();
     expect(screen.getByRole("status")).toHaveTextContent("Listening still works");
@@ -61,7 +75,7 @@ describe("ListenerApp", () => {
   it("starts a random Dhamma talk with one tap and keeps the card aligned with audio", async () => {
     const user = userEvent.setup();
     const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
-    render(<ListenerApp />);
+    renderApp();
 
     await user.click(await screen.findByRole("button", { name: /Play a Dhamma talk/ }));
 
@@ -88,9 +102,28 @@ describe("ListenerApp", () => {
     expect(playSpy).toHaveBeenCalledTimes(2);
   });
 
+  it("favorites a teacher from the quick-listen chooser and starts that teacher", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: /Choose a favorite teacher for play a Dhamma talk/i,
+      }),
+    );
+    expect(screen.getByText("No favorite teachers yet.")).toBeVisible();
+    await user.type(screen.getByRole("searchbox", { name: "Find teachers to favorite" }), "Test");
+    await user.click(screen.getByRole("button", { name: "Add Test Teacher to favorite teachers" }));
+    await user.click(screen.getByRole("button", { name: /Test Teacher.*matching/i }));
+
+    expect(await screen.findByRole("heading", { name: "The nature of not-self" })).toBeVisible();
+    expect(localStorage.getItem("stillpoint:favorite-teachers")).toBe("[10]");
+  });
+
   it("treats every topic equally and combines searchable topic and teacher refinements", async () => {
     const user = userEvent.setup();
-    render(<ListenerApp />);
+    renderApp();
 
     await user.click(screen.getByText("Refine the selection"));
     expect(await screen.findByLabelText("Four Noble Truths")).toBeInTheDocument();
@@ -110,7 +143,7 @@ describe("ListenerApp", () => {
     const user = userEvent.setup();
     const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
     saveLastPlayedTalkId(1);
-    render(<ListenerApp />);
+    renderApp();
 
     await user.click(await screen.findByRole("button", { name: /Continue listening/ }));
 
@@ -124,7 +157,7 @@ describe("ListenerApp", () => {
 
   it("R10: exposes hidden restrictions and clears a zero-result refinement", async () => {
     const user = userEvent.setup();
-    render(<ListenerApp />);
+    renderApp();
     await user.click(screen.getByText("Refine the selection"));
     await user.click(screen.getByText("Duration and language"));
     await user.selectOptions(screen.getByLabelText("Duration"), "15");
@@ -142,7 +175,7 @@ describe("ListenerApp", () => {
     vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(
       new DOMException("Playback blocked", "NotAllowedError"),
     );
-    render(<ListenerApp />);
+    renderApp();
 
     await user.click(await screen.findByRole("button", { name: /Play a Dhamma talk/ }));
 

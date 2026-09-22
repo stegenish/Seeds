@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { Heart, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Teacher } from "@/lib/domain/talk";
 import { normalizeText } from "@/lib/domain/text";
@@ -9,10 +9,14 @@ export function TeacherFilter({
   teachers,
   selectedId,
   onSelect,
+  favoriteIds,
+  onFavorite,
 }: {
   teachers: Teacher[];
   selectedId: number | null;
   onSelect: (id: number | null) => void;
+  favoriteIds: number[];
+  onFavorite: (id: number) => void;
 }) {
   const [query, setQuery] = useState("");
   const selectedTeacher = teachers.find((teacher) => teacher.id === selectedId);
@@ -52,16 +56,28 @@ export function TeacherFilter({
             <div className="teacher-results" aria-label="Teacher results">
               {matches.length > 0 ? (
                 matches.map((teacher) => (
-                  <button
-                    type="button"
-                    key={teacher.id}
-                    onClick={() => {
-                      onSelect(teacher.id);
-                      setQuery("");
-                    }}
-                  >
-                    {teacher.name}
-                  </button>
+                  <div className="teacher-result" key={teacher.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelect(teacher.id);
+                        setQuery("");
+                      }}
+                    >
+                      {teacher.name}
+                    </button>
+                    <button
+                      type="button"
+                      className={favoriteIds.includes(teacher.id) ? "is-favorite" : ""}
+                      onClick={() => onFavorite(teacher.id)}
+                      aria-label={`${favoriteIds.includes(teacher.id) ? "Remove" : "Add"} ${teacher.name} ${favoriteIds.includes(teacher.id) ? "from" : "to"} favorite teachers`}
+                    >
+                      <Heart
+                        size={17}
+                        fill={favoriteIds.includes(teacher.id) ? "currentColor" : "none"}
+                      />
+                    </button>
+                  </div>
                 ))
               ) : (
                 <p>No teachers found</p>
