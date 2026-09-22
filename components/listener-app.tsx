@@ -84,7 +84,7 @@ export function ListenerApp() {
 
   const closeTeacherPicker = useCallback(() => {
     setTeacherPickerKind(null);
-    requestAnimationFrame(() => teacherPickerTriggerRef.current?.focus());
+    teacherPickerTriggerRef.current?.focus();
   }, []);
 
   return (
