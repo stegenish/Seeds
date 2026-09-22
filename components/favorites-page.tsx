@@ -44,6 +44,9 @@ export function FavoritesPage() {
       normalizeText(teacher.name).includes(normalizeText(query)),
   );
   const missingTalks = favoriteTalkIds.length - favoriteTalks.length;
+  const missingTeachers = favoriteTeacherIds.filter(
+    (id) => !teachers.some((teacher) => teacher.id === id),
+  ).length;
   return (
     <main className="favorites-page" aria-labelledby="favorites-title">
       <div className="favorites-heading">
@@ -129,7 +132,13 @@ export function FavoritesPage() {
                     <button
                       className="play-row-button"
                       type="button"
-                      onClick={() => selectAndStart({ ...DEFAULT_FILTERS, teacherId: teacher.id })}
+                      onClick={() =>
+                        selectAndStart({
+                          ...DEFAULT_FILTERS,
+                          teacherId: teacher.id,
+                          languageId: null,
+                        })
+                      }
                     >
                       <Play size={17} fill="currentColor" /> Play anything
                     </button>
@@ -157,6 +166,12 @@ export function FavoritesPage() {
               }
             />
           )}
+          {missingTeachers > 0 ? (
+            <p className="selection-message">
+              {missingTeachers} saved {missingTeachers === 1 ? "teacher is" : "teachers are"}{" "}
+              waiting for catalog metadata.
+            </p>
+          ) : null}
         </div>
       )}
       {undo ? (

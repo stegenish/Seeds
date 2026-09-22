@@ -110,6 +110,36 @@ test("mobile player offers bounded 15-second and 1-minute seek controls", async 
   await page.screenshot({ path: "test-results/player-seek-controls-360.png", fullPage: true });
 });
 
+test("favorites navigation keeps playback alive and exposes the saved teacher", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  await page.getByRole("button", { name: /Play a Dhamma talk/ }).click();
+  await page.getByRole("button", { name: "Add to favorites" }).click();
+  await page.getByRole("button", { name: "Add Test Teacher to favorite teachers" }).click();
+  const audio = page.locator("audio");
+  await expect
+    .poll(() => audio.evaluate((element: HTMLAudioElement) => element.paused))
+    .toBe(false);
+
+  await page.getByRole("link", { name: "Favorites", exact: true }).click();
+  await expect(page).toHaveURL(/\/favorites$/);
+  await expect(audio).toHaveCount(1);
+  await expect
+    .poll(() => audio.evaluate((element: HTMLAudioElement) => element.paused))
+    .toBe(false);
+  await expect(page.getByRole("heading", { name: /Dhamma talks/ })).toBeVisible();
+
+  await page.getByRole("tab", { name: /Teachers/ }).click();
+  await expect(page.getByRole("heading", { name: "Test Teacher" })).toBeVisible();
+  await page.getByRole("button", { name: "Play anything" }).click();
+  await expect(audio).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
 test("one tap plays audio; refine, reload, next, close, and favorites preserve coherent state", async ({
   page,
 }) => {
@@ -179,4 +209,6 @@ test("offline startup hydrates the cached app without browser HTTP cache", async
   await page.getByText("Refine the selection").click();
   await page.getByRole("searchbox", { name: "Search topics" }).fill("metta");
   await expect(page.getByLabel("Loving-kindness (mettā)")).toBeVisible();
+  await page.goto("/favorites");
+  await expect(page.getByRole("heading", { name: "Favorites" })).toBeVisible();
 });

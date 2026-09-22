@@ -34,11 +34,24 @@ export function TeacherFilter({
         Teacher
       </label>
       {selectedTeacher ? (
-        <button className="selected-teacher" type="button" onClick={() => onSelect(null)}>
-          <span>{selectedTeacher.name}</span>
-          <X size={16} aria-hidden="true" />
-          <span className="sr-only">Remove teacher filter</span>
-        </button>
+        <div className="selected-teacher-row">
+          <button className="selected-teacher" type="button" onClick={() => onSelect(null)}>
+            <span>{selectedTeacher.name}</span>
+            <X size={16} aria-hidden="true" />
+            <span className="sr-only">Remove teacher filter</span>
+          </button>
+          <button
+            className={`selected-teacher-favorite ${favoriteIds.includes(selectedTeacher.id) ? "is-favorite" : ""}`}
+            type="button"
+            onClick={() => onFavorite(selectedTeacher.id)}
+            aria-label={`${favoriteIds.includes(selectedTeacher.id) ? "Remove" : "Add"} ${selectedTeacher.name} ${favoriteIds.includes(selectedTeacher.id) ? "from" : "to"} favorite teachers`}
+          >
+            <Heart
+              size={18}
+              fill={favoriteIds.includes(selectedTeacher.id) ? "currentColor" : "none"}
+            />
+          </button>
+        </div>
       ) : (
         <>
           <span className="search-input">

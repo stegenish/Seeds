@@ -107,14 +107,19 @@ describe("ListenerApp", () => {
     vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
     renderApp();
 
-    await user.click(
-      await screen.findByRole("button", {
-        name: /Choose a favorite teacher for play a Dhamma talk/i,
-      }),
-    );
+    const chooser = await screen.findByRole("button", {
+      name: /Choose a favorite teacher for play a Dhamma talk/i,
+    });
+    await user.click(chooser);
     expect(screen.getByText("No favorite teachers yet.")).toBeVisible();
     await user.type(screen.getByRole("searchbox", { name: "Find teachers to favorite" }), "Test");
     await user.click(screen.getByRole("button", { name: "Add Test Teacher to favorite teachers" }));
+    expect(
+      screen.getByRole("button", { name: "Remove Test Teacher from favorite teachers" }),
+    ).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(chooser).toHaveFocus();
+    await user.click(chooser);
     await user.click(screen.getByRole("button", { name: /Test Teacher.*matching/i }));
 
     expect(await screen.findByRole("heading", { name: "The nature of not-self" })).toBeVisible();
@@ -134,6 +139,10 @@ describe("ListenerApp", () => {
     await user.click(screen.getByLabelText("Not-self (anatta)"));
     await user.type(screen.getByLabelText("Teacher"), "Test");
     await user.click(screen.getByRole("button", { name: "Test Teacher" }));
+    await user.click(screen.getByRole("button", { name: "Add Test Teacher to favorite teachers" }));
+    expect(
+      screen.getByRole("button", { name: "Remove Test Teacher from favorite teachers" }),
+    ).toBeVisible();
 
     const dhammaButton = screen.getByRole("button", { name: /Play a Dhamma talk/ });
     expect(within(dhammaButton).getByText("1 available")).toBeVisible();

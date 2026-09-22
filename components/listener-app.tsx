@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpenText, ChevronDown, Clock3, SlidersHorizontal } from "lucide-react";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { FilterSelect } from "@/components/filter-select";
 import { QuickListenActions } from "@/components/quick-listen-actions";
 import { TalkSelection } from "@/components/talk-selection";
@@ -41,6 +41,7 @@ export function ListenerApp() {
   const [filters, setFilters] = useState<SelectionFilters>(DEFAULT_FILTERS);
   const [selectionMessage, setSelectionMessage] = useState<string | null>(null);
   const [teacherPickerKind, setTeacherPickerKind] = useState<RecordingKindFilter | null>(null);
+  const teacherPickerTriggerRef = useRef<HTMLElement | null>(null);
   const counts = useMemo(
     () => ({
       all: filterTalks(talks, { ...filters, kind: "all" }).length,
@@ -75,6 +76,17 @@ export function ListenerApp() {
     }
   }
 
+  const openTeacherPicker = useCallback((kind: RecordingKindFilter) => {
+    teacherPickerTriggerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setTeacherPickerKind(kind);
+  }, []);
+
+  const closeTeacherPicker = useCallback(() => {
+    setTeacherPickerKind(null);
+    requestAnimationFrame(() => teacherPickerTriggerRef.current?.focus());
+  }, []);
+
   return (
     <main className="picker" id="top" aria-labelledby="picker-title">
       <div className="picker-intro">
@@ -90,7 +102,7 @@ export function ListenerApp() {
         lastTalk={currentTalk ? null : lastPlayedTalk}
         lastTeacherNames={lastPlayedTalk ? getTeacherNames(lastPlayedTalk, teacherById) : ""}
         onListen={(kind) => playRandom({ ...filters, kind })}
-        onChooseTeacher={setTeacherPickerKind}
+        onChooseTeacher={openTeacherPicker}
         onContinue={() => {
           if (lastPlayedTalk) startTalk(lastPlayedTalk);
         }}
@@ -206,10 +218,10 @@ export function ListenerApp() {
           teachers={teachers}
           favoriteIds={favoriteTeacherIds}
           onFavorite={toggleTeacherFavorite}
-          onClose={() => setTeacherPickerKind(null)}
+          onClose={closeTeacherPicker}
           onChoose={(teacherId) => {
             playRandom({ ...filters, kind: teacherPickerKind, teacherId });
-            setTeacherPickerKind(null);
+            closeTeacherPicker();
           }}
         />
       ) : null}
