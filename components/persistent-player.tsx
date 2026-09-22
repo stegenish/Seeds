@@ -1,6 +1,6 @@
 "use client";
 
-import { Pause, Play } from "lucide-react";
+import { Pause, Play, RotateCcw, RotateCw } from "lucide-react";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Talk } from "@/lib/domain/talk";
 import { readPlaybackProgress, savePlaybackProgress } from "@/lib/user/preferences";
@@ -158,19 +158,26 @@ export const PersistentPlayer = forwardRef<
       <button className="player-close" type="button" onClick={onClose} aria-label="Close player">
         ×
       </button>
-      <div className="player-seek-controls" aria-label="Seek controls">
-        <button type="button" onClick={() => seekBy(-60)} aria-label="Back 1 minute">
-          −1 min
-        </button>
-        <button type="button" onClick={() => seekBy(-15)} aria-label="Back 15 seconds">
-          −15 sec
-        </button>
-        <button type="button" onClick={() => seekBy(15)} aria-label="Forward 15 seconds">
-          +15 sec
-        </button>
-        <button type="button" onClick={() => seekBy(60)} aria-label="Forward 1 minute">
-          +1 min
-        </button>
+      <div className="player-seek-controls" role="group" aria-label="Seek controls">
+        {[-60, -15, 15, 60].map((seconds) => {
+          const Icon = seconds < 0 ? RotateCcw : RotateCw;
+          const interval = Math.abs(seconds) === 60 ? "1 minute" : "15 seconds";
+          const label = `${seconds < 0 ? "Back" : "Forward"} ${interval}`;
+          return (
+            <button
+              key={seconds}
+              type="button"
+              onClick={() => seekBy(seconds)}
+              aria-label={label}
+              title={label}
+            >
+              <span className="player-seek-icon" aria-hidden="true">
+                <Icon size={36} strokeWidth={1.5} />
+                <span>{Math.abs(seconds) === 60 ? "1m" : "15s"}</span>
+              </span>
+            </button>
+          );
+        })}
       </div>
       <audio
         ref={audioRef}
