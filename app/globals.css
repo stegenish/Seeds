@@ -935,6 +935,11 @@ legend,
 .remove-favorite-button {
   color: var(--sun-deep);
 }
+
+.remove-favorite-button:not(.is-favorite) {
+  color: var(--ink-soft);
+}
+
 .favorite-teacher-card {
   padding: 0.7rem 0.55rem 0.7rem 0.85rem;
 }

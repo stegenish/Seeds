@@ -4,6 +4,8 @@
 
 Keep the catalog, playback session, shuffle history, favorite recording IDs, and favorite teacher IDs in a client provider mounted by the root layout. Route pages consume that provider, while the persistent player is rendered beside the routed content.
 
+Listening history is a separate device-local event list capped at 50 entries. An entry is created only after the audio element reports successful playback, not merely when a recording is selected.
+
 Favorite recordings and teachers remain separate device-local sets. The Favorites route resolves their IDs against the synchronized catalog and groups recordings by domain kind. Quick-listen teacher choosers reuse the existing deterministic filter and shuffle rules, combining a chosen teacher with the current refinements.
 
 ## Rationale

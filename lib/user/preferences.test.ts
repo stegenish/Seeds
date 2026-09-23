@@ -10,6 +10,8 @@ import {
   toggleFavorite,
   readFavoriteTeachers,
   toggleFavoriteTeacher,
+  readListeningHistory,
+  recordListening,
 } from "./preferences";
 
 describe("local preferences", () => {
@@ -46,9 +48,20 @@ describe("local preferences", () => {
     expect(readLastPlayedTalkId()).toBe(42);
   });
 
+  it("keeps the 50 most recent playback events in chronological order", () => {
+    for (let id = 1; id <= 55; id += 1) recordListening(id, id * 1_000);
+
+    const history = readListeningHistory();
+    expect(history).toHaveLength(50);
+    expect(history[0]).toEqual({ talkId: 55, listenedAt: 55_000 });
+    expect(history[49]).toEqual({ talkId: 6, listenedAt: 6_000 });
+  });
+
   it("recovers from malformed storage", () => {
     localStorage.setItem("stillpoint:selection-history", "not-json");
     expect(readSelectionHistory()).toEqual([]);
+    localStorage.setItem("stillpoint:listening-history", '[null,{"talkId":0,"listenedAt":3}]');
+    expect(readListeningHistory()).toEqual([]);
   });
   it("rejects malformed progress values and ignores non-finite writes", () => {
     localStorage.setItem("stillpoint:playback-progress", '{"1":-5,"2":"12","3":12}');

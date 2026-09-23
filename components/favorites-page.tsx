@@ -1,12 +1,12 @@
 "use client";
 
-import { ExternalLink, Heart, Play, Search } from "lucide-react";
+import { Heart, Play, Search } from "lucide-react";
 import { useMemo, useState } from "react";
+import { RecordingListRow } from "@/components/recording-list-row";
 import { useStillpoint } from "@/components/stillpoint-provider";
 import { DEFAULT_FILTERS } from "@/lib/domain/filters";
 import { normalizeText } from "@/lib/domain/text";
-import type { RecordingKind, Talk } from "@/lib/domain/talk";
-import { formatDuration } from "@/lib/presentation/format";
+import type { RecordingKind } from "@/lib/domain/talk";
 import { getTeacherNames } from "@/lib/presentation/teachers";
 
 const GROUPS: Array<{ kind: RecordingKind; label: string }> = [
@@ -80,12 +80,13 @@ export function FavoritesPage() {
                   </h2>
                   <div className="favorite-list">
                     {items.map((talk) => (
-                      <FavoriteTalk
+                      <RecordingListRow
                         key={talk.id}
                         talk={talk}
                         teacherNames={getTeacherNames(talk, teacherById)}
+                        isFavorite
                         onPlay={() => startTalk(talk)}
-                        onRemove={() => {
+                        onFavorite={() => {
                           toggleTalkFavorite(talk.id);
                           setUndo({ type: "recording", id: talk.id, label: talk.title });
                         }}
@@ -190,53 +191,6 @@ export function FavoritesPage() {
         </div>
       ) : null}
     </main>
-  );
-}
-
-function FavoriteTalk({
-  talk,
-  teacherNames,
-  onPlay,
-  onRemove,
-}: {
-  talk: Talk;
-  teacherNames: string;
-  onPlay: () => void;
-  onRemove: () => void;
-}) {
-  return (
-    <article className="favorite-talk-card">
-      <button className="favorite-talk-main" type="button" onClick={onPlay}>
-        <span className="row-play">
-          <Play size={17} fill="currentColor" />
-        </span>
-        <span>
-          <strong>{talk.title}</strong>
-          <small>
-            {teacherNames}
-            {talk.durationMinutes ? ` · ${formatDuration(talk.durationMinutes)}` : ""}
-          </small>
-        </span>
-      </button>
-      <div className="favorite-row-actions">
-        <a
-          href={talk.sourceUrl}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Open ${talk.title} on Dharma Seed`}
-        >
-          <ExternalLink size={18} />
-        </a>
-        <button
-          className="remove-favorite-button"
-          type="button"
-          onClick={onRemove}
-          aria-label={`Remove ${talk.title} from favorites`}
-        >
-          <Heart size={19} fill="currentColor" />
-        </button>
-      </div>
-    </article>
   );
 }
 

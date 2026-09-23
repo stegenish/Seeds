@@ -1,6 +1,6 @@
-const CACHE_NAME = "stillpoint-shell-v4";
+const CACHE_NAME = "stillpoint-shell-v5";
 const SHELL = ["/manifest.webmanifest", "/favicon.svg"];
-const PAGES = ["/", "/favorites"];
+const PAGES = ["/", "/favorites", "/history"];
 
 async function cachePages(entries) {
   if (entries.some(([, response]) => !response.ok))

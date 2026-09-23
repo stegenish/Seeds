@@ -26,6 +26,9 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <Link href="/favorites" aria-current={path === "/favorites" ? "page" : undefined}>
             Favorites
           </Link>
+          <Link href="/history" aria-current={path === "/history" ? "page" : undefined}>
+            History
+          </Link>
         </nav>
         <div className="topbar-actions">
           <a

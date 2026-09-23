@@ -10,7 +10,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
-function setup() {
+function setup(onPlaybackStarted?: () => void) {
   const ref = createRef<PersistentPlayerHandle>();
   const view = render(
     <PersistentPlayer
@@ -18,12 +18,20 @@ function setup() {
       talk={makeTalk()}
       teacherNames="Teacher"
       onClose={() => undefined}
+      onPlaybackStarted={onPlaybackStarted}
     />,
   );
   const audio = view.container.querySelector("audio")!;
   Object.defineProperty(audio, "duration", { configurable: true, value: 100 });
   return { ...view, audio, ref };
 }
+it("reports a listening event once when playback actually starts", () => {
+  const onPlaybackStarted = vi.fn();
+  const { audio } = setup(onPlaybackStarted);
+  fireEvent.play(audio);
+  fireEvent.play(audio);
+  expect(onPlaybackStarted).toHaveBeenCalledTimes(1);
+});
 it("restores position only after metadata and saves on pause", () => {
   savePlaybackProgress(1, 24);
   const { audio } = setup();

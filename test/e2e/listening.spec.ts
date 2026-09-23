@@ -135,6 +135,14 @@ test("favorites navigation keeps playback alive and exposes the saved teacher", 
   await expect(page.getByRole("heading", { name: "Test Teacher" })).toBeVisible();
   await page.getByRole("button", { name: "Play anything" }).click();
   await expect(audio).toHaveCount(1);
+  const historyTitle = await page.locator(".player-copy strong").textContent();
+  await page.getByRole("link", { name: "History", exact: true }).click();
+  await expect(page).toHaveURL(/\/history$/);
+  await expect(page.getByRole("heading", { name: "History" })).toBeVisible();
+  await expect(
+    page.locator("main").getByText(historyTitle!, { exact: true }).first(),
+  ).toBeVisible();
+  await expect(audio).toHaveCount(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -211,4 +219,6 @@ test("offline startup hydrates the cached app without browser HTTP cache", async
   await expect(page.getByLabel("Loving-kindness (mettā)")).toBeVisible();
   await page.goto("/favorites");
   await expect(page.getByRole("heading", { name: "Favorites" })).toBeVisible();
+  await page.goto("/history");
+  await expect(page.getByRole("heading", { name: "History" })).toBeVisible();
 });

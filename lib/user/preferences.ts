@@ -5,6 +5,13 @@ const FAVORITES_KEY = "stillpoint:favorites";
 const FAVORITE_TEACHERS_KEY = "stillpoint:favorite-teachers";
 const PROGRESS_KEY = "stillpoint:playback-progress";
 const LAST_PLAYED_KEY = "stillpoint:last-played-talk";
+const LISTENING_HISTORY_KEY = "stillpoint:listening-history";
+const LISTENING_HISTORY_LIMIT = 50;
+
+export interface ListeningHistoryEntry {
+  talkId: number;
+  listenedAt: number;
+}
 
 interface PlaybackProgress {
   [talkId: string]: number;
@@ -65,6 +72,41 @@ export function readLastPlayedTalkId(storage?: Storage): number | null {
 
 export function saveLastPlayedTalkId(talkId: number, storage?: Storage): void {
   writeStoredValue(LAST_PLAYED_KEY, String(talkId), storage);
+}
+
+export function readListeningHistory(storage?: Storage): ListeningHistoryEntry[] {
+  try {
+    const value: unknown = JSON.parse(readStoredValue(LISTENING_HISTORY_KEY, storage) ?? "[]");
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter(
+        (entry): entry is ListeningHistoryEntry =>
+          Boolean(entry) &&
+          typeof entry === "object" &&
+          Number.isInteger((entry as ListeningHistoryEntry).talkId) &&
+          (entry as ListeningHistoryEntry).talkId > 0 &&
+          Number.isFinite((entry as ListeningHistoryEntry).listenedAt) &&
+          (entry as ListeningHistoryEntry).listenedAt > 0,
+      )
+      .slice(0, LISTENING_HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+export function recordListening(
+  talkId: number,
+  listenedAt = Date.now(),
+  storage?: Storage,
+): ListeningHistoryEntry[] {
+  if (!Number.isInteger(talkId) || talkId <= 0 || !Number.isFinite(listenedAt) || listenedAt <= 0)
+    return readListeningHistory(storage);
+  const history = [{ talkId, listenedAt }, ...readListeningHistory(storage)].slice(
+    0,
+    LISTENING_HISTORY_LIMIT,
+  );
+  writeStoredValue(LISTENING_HISTORY_KEY, JSON.stringify(history), storage);
+  return history;
 }
 
 function readNumberArray(storage: Storage | undefined, key: string): number[] {

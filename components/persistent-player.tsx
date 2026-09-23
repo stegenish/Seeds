@@ -15,14 +15,22 @@ export const PersistentPlayer = forwardRef<
     talk: Talk;
     teacherNames: string;
     onClose: () => void;
+    onPlaybackStarted?: () => void;
   }
->(function PersistentPlayer({ talk, teacherNames, onClose }, ref) {
+>(function PersistentPlayer({ talk, teacherNames, onClose, onPlaybackStarted }, ref) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackMessage, setPlaybackMessage] = useState<string | null>(null);
   const lastSavedAt = useRef(0);
   const metadataLoaded = useRef(false);
   const requestId = useRef<symbol | null>(null);
+  const playbackReported = useRef(false);
+
+  function reportPlaybackStarted() {
+    if (playbackReported.current) return;
+    playbackReported.current = true;
+    onPlaybackStarted?.();
+  }
 
   const requestPlay = useCallback(async () => {
     const audio = audioRef.current;
@@ -188,6 +196,7 @@ export const PersistentPlayer = forwardRef<
         onPlay={() => {
           setIsPlaying(true);
           setPlaybackMessage(null);
+          reportPlaybackStarted();
         }}
         onPlaying={() => {
           setIsPlaying(true);

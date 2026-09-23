@@ -19,11 +19,14 @@ import {
   readFavoriteTeachers,
   readFavorites,
   readLastPlayedTalkId,
+  readListeningHistory,
   readSelectionHistory,
   saveLastPlayedTalkId,
   saveSelectionHistory,
   toggleFavorite,
   toggleFavoriteTeacher,
+  recordListening,
+  type ListeningHistoryEntry,
 } from "@/lib/user/preferences";
 
 type Catalog = ReturnType<typeof useCatalog>;
@@ -37,6 +40,7 @@ interface StillpointValue {
   teacherById: Map<number, Teacher>;
   favoriteTalkIds: number[];
   favoriteTeacherIds: number[];
+  listeningHistory: ListeningHistoryEntry[];
   startTalk: (talk: Talk) => void;
   selectAndStart: (filters: SelectionFilters) => RandomSelection;
   toggleTalkFavorite: (id: number) => void;
@@ -52,6 +56,7 @@ export function StillpointProvider({ children }: { children: ReactNode }) {
   const [history, setHistory] = useState<number[]>([]);
   const [favoriteTalkIds, setFavoriteTalkIds] = useState<number[]>([]);
   const [favoriteTeacherIds, setFavoriteTeacherIds] = useState<number[]>([]);
+  const [listeningHistory, setListeningHistory] = useState<ListeningHistoryEntry[]>([]);
   const playerRef = useRef<PersistentPlayerHandle>(null);
 
   useEffect(() => {
@@ -61,6 +66,7 @@ export function StillpointProvider({ children }: { children: ReactNode }) {
       setHistory(readSelectionHistory());
       setFavoriteTalkIds(readFavorites());
       setFavoriteTeacherIds(readFavoriteTeachers());
+      setListeningHistory(readListeningHistory());
       setLastPlayedId(readLastPlayedTalkId());
     });
     return () => {
@@ -104,6 +110,7 @@ export function StillpointProvider({ children }: { children: ReactNode }) {
     teacherById,
     favoriteTalkIds,
     favoriteTeacherIds,
+    listeningHistory,
     startTalk,
     selectAndStart,
     toggleTalkFavorite(id) {
@@ -124,6 +131,7 @@ export function StillpointProvider({ children }: { children: ReactNode }) {
           talk={currentTalk}
           teacherNames={getTeacherNames(currentTalk, teacherById)}
           onClose={() => setCurrentTalkId(null)}
+          onPlaybackStarted={() => setListeningHistory(recordListening(currentTalk.id))}
         />
       ) : null}
     </Context.Provider>
