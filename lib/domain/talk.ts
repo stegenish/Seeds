@@ -43,6 +43,8 @@ export interface SelectionFilters {
   kind: RecordingKindFilter;
   topicIds: string[];
   teacherId: number | null;
+  /** When present, restrict to recordings by any teacher in this pool; [] matches nothing. */
+  teacherIds?: readonly number[];
   languageId: number | null;
   maximumDurationMinutes: number | null;
 }

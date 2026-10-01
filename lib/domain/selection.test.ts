@@ -52,6 +52,35 @@ describe("filterTalks", () => {
 describe("selectRandomTalk", () => {
   const talks = [makeTalk({ id: 1 }), makeTalk({ id: 2 }), makeTalk({ id: 3 })];
 
+  it("shuffles the union of favorite teachers once per recording and respects refinements", () => {
+    const catalog = [
+      makeTalk({ id: 1, teacherIds: [10] }),
+      makeTalk({ id: 2, teacherIds: [20] }),
+      makeTalk({ id: 3, teacherIds: [10, 20] }),
+      makeTalk({ id: 4, teacherIds: [30] }),
+      makeTalk({ id: 5, teacherIds: [20], kind: "guided-meditation" }),
+      makeTalk({ id: 6, teacherIds: [20], languageId: 2 }),
+      makeTalk({ id: 7, teacherIds: [20], durationMinutes: 90 }),
+    ];
+    const combined = {
+      ...filters,
+      kind: "talk" as const,
+      teacherIds: [10, 20],
+      maximumDurationMinutes: 60,
+    };
+    expect(filterTalks(catalog, combined).map((talk) => talk.id)).toEqual([1, 2, 3]);
+    expect(filterTalks(catalog, { ...combined, topicIds: ["not-self"] })).toEqual([]);
+    let history = new Set<number>();
+    const selected = Array.from({ length: 4 }, () => {
+      const result = selectRandomTalk(catalog, combined, history, () => 0);
+      history = new Set(result.nextHistory);
+      expect(result.eligibleCount).toBe(3);
+      return result.talk?.id;
+    });
+    expect(selected).toEqual([1, 2, 3, 1]);
+    expect(selectRandomTalk(catalog, { ...combined, teacherIds: [] }, history).talk).toBeNull();
+  });
+
   it("R4: produces two complete shuffle cycles without repeats within either", () => {
     let history: number[] = [];
     const selected = Array.from({ length: 6 }, () => {

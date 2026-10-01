@@ -8,12 +8,14 @@ import { normalizeText } from "@/lib/domain/text";
 export function TeacherFilter({
   teachers,
   selectedId,
+  favoriteTeachersOnly = false,
   onSelect,
   favoriteIds,
   onFavorite,
 }: {
   teachers: Teacher[];
   selectedId: number | null;
+  favoriteTeachersOnly?: boolean;
   onSelect: (id: number | null) => void;
   favoriteIds: number[];
   onFavorite: (id: number) => void;
@@ -33,7 +35,17 @@ export function TeacherFilter({
       <label className="field-label" htmlFor="teacher-search">
         Teacher
       </label>
-      {selectedTeacher ? (
+      {favoriteTeachersOnly ? (
+        <button
+          className="selected-teacher"
+          type="button"
+          onClick={() => onSelect(null)}
+          aria-label="Remove all favorite teachers filter"
+        >
+          <span>All favorite teachers</span>
+          <X size={16} aria-hidden="true" />
+        </button>
+      ) : selectedTeacher ? (
         <div className="selected-teacher-row">
           <button className="selected-teacher" type="button" onClick={() => onSelect(null)}>
             <span>{selectedTeacher.name}</span>

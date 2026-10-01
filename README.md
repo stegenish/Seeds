@@ -15,7 +15,7 @@ The web app is designed to be installed from Chrome on Android and deployed to V
 - Stores selection history, favorites, and playback progress only on the device.
 - Organizes favorite recordings by type and favorite teachers on a dedicated page.
 - Keeps the 50 most recent playback events in an on-device listening history.
-- Lets each quick-listen action choose a favorite teacher without losing other refinements.
+- Lets each quick-listen action choose one or all favorite teachers without losing other refinements. The combined pool shuffles recordings (not teachers) without repeats until exhausted; “Play another” keeps that pool selected and follows changes to your favorite teachers.
 - Offers a direct continuation of the most recently played recording.
 - Streams original, unmodified audio directly from Dharma Seed.
 - Preserves teacher attribution, original-source links, and license information.

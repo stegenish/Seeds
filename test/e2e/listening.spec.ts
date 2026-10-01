@@ -19,10 +19,11 @@ function silentWav() {
   wav.writeUInt32LE(bytes, 40);
   return wav;
 }
-async function fixtures(context: BrowserContext) {
+async function fixtures(context: BrowserContext, multipleTeachers = false) {
   const talks = [1, 2].map((id) =>
     makeTalk({
       id,
+      teacherIds: [multipleTeachers && id === 2 ? 20 : 10],
       title: `Fixture teaching ${id}`,
       audioUrl: `http://127.0.0.1:3100/__test_audio/${id}.wav`,
     }),
@@ -30,7 +31,11 @@ async function fixtures(context: BrowserContext) {
   const wav = silentWav();
   await context.route("**/api/catalog/**", async (route) => {
     const url = new URL(route.request().url());
-    const items = url.pathname.endsWith("teachers") ? [makeTeacher()] : talks;
+    const items = url.pathname.endsWith("teachers")
+      ? multipleTeachers
+        ? [makeTeacher(), makeTeacher({ id: 20, name: "Second Teacher" })]
+        : [makeTeacher()]
+      : talks;
     const ids = url.searchParams.get("ids");
     const payload = ids
       ? { items: items.filter((item) => ids.split(",").includes(String(item.id))) }
@@ -59,6 +64,39 @@ async function fixtures(context: BrowserContext) {
 }
 
 test.beforeEach(async ({ context }) => fixtures(context));
+
+test("mobile chooser shuffles recordings from all favorite teachers", async ({ page, context }) => {
+  await fixtures(context, true);
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto("/");
+  const chooser = page.getByRole("button", {
+    name: /Choose a favorite teacher for play a Dhamma talk/i,
+  });
+  await chooser.click();
+  const search = page.getByRole("searchbox", { name: "Find teachers to favorite" });
+  await search.fill("Test");
+  await page.getByRole("button", { name: "Add Test Teacher to favorite teachers" }).click();
+  await search.fill("Second");
+  await page.getByRole("button", { name: "Add Second Teacher to favorite teachers" }).click();
+  await search.fill("");
+  const allFavorites = page.getByRole("button", { name: /All favorite teachers/ });
+  await expect(allFavorites).toContainText("2 matching");
+  await page.screenshot({ path: "test-results/all-favorite-teachers-360.png", fullPage: true });
+  await allFavorites.click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".refine-panel > summary small")).toContainText(
+    "All favorite teachers",
+  );
+  const firstTitle = await page.locator("article h2").textContent();
+  await expect
+    .poll(() => page.locator("audio").evaluate((element: HTMLAudioElement) => element.paused))
+    .toBe(false);
+  await page.getByRole("button", { name: "Play another" }).click();
+  await expect(page.locator("article h2")).not.toHaveText(firstTitle!);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
 
 test("active refinements remain readable at narrow phone widths", async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });

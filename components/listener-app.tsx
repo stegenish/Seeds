@@ -39,27 +39,40 @@ export function ListenerApp() {
     toggleTeacherFavorite,
   } = app;
   const [filters, setFilters] = useState<SelectionFilters>(DEFAULT_FILTERS);
+  const [favoriteTeachersOnly, setFavoriteTeachersOnly] = useState(false);
+  const activeFilters = useMemo(
+    () => ({ ...filters, teacherIds: favoriteTeachersOnly ? favoriteTeacherIds : undefined }),
+    [filters, favoriteTeachersOnly, favoriteTeacherIds],
+  );
   const [selectionMessage, setSelectionMessage] = useState<string | null>(null);
   const [teacherPickerKind, setTeacherPickerKind] = useState<RecordingKindFilter | null>(null);
   const teacherPickerTriggerRef = useRef<HTMLElement | null>(null);
   const counts = useMemo(
     () => ({
-      all: filterTalks(talks, { ...filters, kind: "all" }).length,
-      talk: filterTalks(talks, { ...filters, kind: "talk" }).length,
-      "guided-meditation": filterTalks(talks, { ...filters, kind: "guided-meditation" }).length,
+      all: filterTalks(talks, { ...activeFilters, kind: "all" }).length,
+      talk: filterTalks(talks, { ...activeFilters, kind: "talk" }).length,
+      "guided-meditation": filterTalks(talks, { ...activeFilters, kind: "guided-meditation" })
+        .length,
     }),
-    [talks, filters],
+    [talks, activeFilters],
   );
-  const selectedTeacherName =
-    filters.teacherId === null ? null : teacherById.get(filters.teacherId)?.name;
+  const selectedTeacherName = favoriteTeachersOnly
+    ? "All favorite teachers"
+    : filters.teacherId === null
+      ? null
+      : teacherById.get(filters.teacherId)?.name;
   const hasRefinements =
     filters.topicIds.length > 0 ||
     filters.teacherId !== null ||
+    favoriteTeachersOnly ||
     filters.languageId !== 1 ||
     filters.maximumDurationMinutes !== null;
 
-  function playRandom(nextFilters: SelectionFilters) {
-    const result = selectAndStart(nextFilters);
+  function playRandom(nextFilters: SelectionFilters, fromFavorites = favoriteTeachersOnly) {
+    const result = selectAndStart({
+      ...nextFilters,
+      teacherIds: fromFavorites ? favoriteTeacherIds : undefined,
+    });
     if (!result.talk)
       setSelectionMessage(
         talks.length === 0
@@ -68,6 +81,7 @@ export function ListenerApp() {
       );
     else {
       setFilters(nextFilters);
+      setFavoriteTeachersOnly(fromFavorites);
       setSelectionMessage(
         result.historyWasReset
           ? "You selected every recording in this pool, so the shuffle started again."
@@ -157,9 +171,13 @@ export function ListenerApp() {
           <TeacherFilter
             teachers={teachers}
             selectedId={filters.teacherId}
+            favoriteTeachersOnly={favoriteTeachersOnly}
             favoriteIds={favoriteTeacherIds}
             onFavorite={toggleTeacherFavorite}
-            onSelect={(teacherId) => setFilters((current) => ({ ...current, teacherId }))}
+            onSelect={(teacherId) => {
+              setFavoriteTeachersOnly(false);
+              setFilters((current) => ({ ...current, teacherId }));
+            }}
           />
           <details className="more-options">
             <summary>Duration and language</summary>
@@ -203,7 +221,10 @@ export function ListenerApp() {
             <button
               className="clear-button"
               type="button"
-              onClick={() => setFilters((current) => ({ ...DEFAULT_FILTERS, kind: current.kind }))}
+              onClick={() => {
+                setFavoriteTeachersOnly(false);
+                setFilters((current) => ({ ...DEFAULT_FILTERS, kind: current.kind }));
+              }}
             >
               Clear refinements
             </button>
@@ -219,8 +240,12 @@ export function ListenerApp() {
           favoriteIds={favoriteTeacherIds}
           onFavorite={toggleTeacherFavorite}
           onClose={closeTeacherPicker}
+          onChooseFavorites={() => {
+            playRandom({ ...filters, kind: teacherPickerKind, teacherId: null }, true);
+            closeTeacherPicker();
+          }}
           onChoose={(teacherId) => {
-            playRandom({ ...filters, kind: teacherPickerKind, teacherId });
+            playRandom({ ...filters, kind: teacherPickerKind, teacherId }, false);
             closeTeacherPicker();
           }}
         />

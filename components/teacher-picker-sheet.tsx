@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, Search, X } from "lucide-react";
+import { Heart, Search, Shuffle, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { filterTalks } from "@/lib/domain/selection";
 import { normalizeText } from "@/lib/domain/text";
@@ -20,6 +20,7 @@ export function TeacherPickerSheet({
   favoriteIds,
   onFavorite,
   onChoose,
+  onChooseFavorites,
   onClose,
 }: {
   kind: RecordingKindFilter;
@@ -29,6 +30,7 @@ export function TeacherPickerSheet({
   favoriteIds: number[];
   onFavorite: (id: number) => void;
   onChoose: (id: number) => void;
+  onChooseFavorites: () => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
@@ -73,6 +75,12 @@ export function TeacherPickerSheet({
       count: filterTalks(talks, { ...filters, kind, teacherId: teacher.id }).length,
     }));
   }, [favoriteIds, filters, kind, query, talks, teachers]);
+  const favoriteCount = filterTalks(talks, {
+    ...filters,
+    kind,
+    teacherId: null,
+    teacherIds: favoriteIds,
+  }).length;
   return (
     <div
       className="sheet-backdrop"
@@ -105,6 +113,24 @@ export function TeacherPickerSheet({
           </button>
         </header>
         <p className="sheet-context">Your topic, language, and duration refinements still apply.</p>
+        {favoriteIds.length > 0 ? (
+          <button
+            type="button"
+            className="teacher-choice-main all-favorite-teachers"
+            disabled={favoriteCount === 0}
+            onClick={onChooseFavorites}
+          >
+            <Shuffle size={21} aria-hidden="true" />
+            <span>
+              <strong>All favorite teachers</strong>
+              <small>
+                {favoriteCount === 0
+                  ? "No matches with current refinements"
+                  : `${favoriteCount.toLocaleString()} matching · Play at random`}
+              </small>
+            </span>
+          </button>
+        ) : null}
         <span className="search-input">
           <Search size={17} aria-hidden="true" />
           <input

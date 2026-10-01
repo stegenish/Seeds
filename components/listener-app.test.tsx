@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { saveLastPlayedTalkId } from "@/lib/user/preferences";
+import { saveLastPlayedTalkId, toggleFavoriteTeacher } from "@/lib/user/preferences";
 import { makeTalk, makeTeacher } from "@/test/factories";
 import { SiteShell } from "./site-shell";
 import { StillpointProvider } from "./stillpoint-provider";
@@ -124,6 +124,92 @@ describe("ListenerApp", () => {
 
     expect(await screen.findByRole("heading", { name: "The nature of not-self" })).toBeVisible();
     expect(localStorage.getItem("stillpoint:favorite-teachers")).toBe("[10]");
+  });
+
+  it("plays across favorite teachers, keeps the pool for next, and can return to one teacher", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    toggleFavoriteTeacher(10);
+    toggleFavoriteTeacher(20);
+    vi.mocked(getAllTeachers).mockResolvedValue([
+      makeTeacher(),
+      makeTeacher({ id: 20, name: "Other Teacher" }),
+    ]);
+    vi.mocked(getAllTalks).mockResolvedValue([
+      ...talks.slice(0, 2),
+      makeTalk({ id: 3, title: "Other teacher's talk", teacherIds: [20] }),
+      makeTalk({ id: 4, title: "Not a favorite teacher", teacherIds: [30] }),
+    ]);
+    renderApp();
+    const chooser = await screen.findByRole("button", {
+      name: /Choose a favorite teacher for play a Dhamma talk/i,
+    });
+    await user.click(chooser);
+    const combined = screen.getByRole("button", { name: /All favorite teachers/ });
+    expect(combined).toHaveTextContent("2 matching");
+    await user.click(combined);
+    expect(await screen.findByRole("heading", { name: "The nature of not-self" })).toBeVisible();
+    expect(screen.getByText(/Any topic · All favorite teachers · English/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Play another" }));
+    expect(await screen.findByRole("heading", { name: "Other teacher's talk" })).toBeVisible();
+    await user.click(chooser);
+    await user.click(screen.getByRole("button", { name: /Test Teacher.*matching/i }));
+    expect(await screen.findByRole("heading", { name: "The nature of not-self" })).toBeVisible();
+    expect(screen.getByText(/Any topic · Test Teacher · English/)).toBeVisible();
+    // The combined option overrides the previously selected individual teacher.
+    await user.click(chooser);
+    expect(screen.getByRole("button", { name: /All favorite teachers/ })).toHaveTextContent(
+      "2 matching",
+    );
+    await user.click(screen.getByRole("button", { name: /All favorite teachers/ }));
+    expect(await screen.findByRole("heading", { name: "The nature of not-self" })).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Play another" }));
+    expect(await screen.findByRole("heading", { name: "Other teacher's talk" })).toBeVisible();
+    // Removing a favorite immediately narrows the active pool, without stopping playback.
+    await user.click(
+      screen.getByRole("button", { name: "Remove Other Teacher from favorite teachers" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Play another" }));
+    expect(await screen.findByRole("heading", { name: "The nature of not-self" })).toBeVisible();
+    await user.click(
+      screen.getByRole("button", { name: "Remove Test Teacher from favorite teachers" }),
+    );
+    expect(screen.getByRole("button", { name: /Play a Dhamma talk/ })).toBeDisabled();
+    await user.click(screen.getByText("Refine the selection"));
+    await user.click(screen.getByRole("button", { name: "Remove all favorite teachers filter" }));
+    expect(screen.getByRole("button", { name: /Play a Dhamma talk/ })).toHaveTextContent(
+      "3 available",
+    );
+  });
+
+  it("offers the combined pool for each recording kind and disables zero matches", async () => {
+    const user = userEvent.setup();
+    toggleFavoriteTeacher(10);
+    renderApp();
+    for (const [label, count] of [
+      ["a guided meditation", 1],
+      ["anything", 3],
+    ] as const) {
+      await user.click(
+        await screen.findByRole("button", {
+          name: new RegExp(`Choose a favorite teacher for play ${label}`, "i"),
+        }),
+      );
+      expect(screen.getByRole("button", { name: /All favorite teachers/ })).toHaveTextContent(
+        `${count} matching`,
+      );
+      await user.click(screen.getByRole("button", { name: "Close teacher chooser" }));
+    }
+    await user.click(screen.getByText("Refine the selection"));
+    await user.click(screen.getByText("Duration and language"));
+    await user.selectOptions(screen.getByLabelText("Duration"), "15");
+    await user.click(
+      screen.getByRole("button", { name: /Choose a favorite teacher for play a Dhamma talk/i }),
+    );
+    expect(screen.getByRole("button", { name: /All favorite teachers/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /All favorite teachers/ })).toHaveTextContent(
+      "No matches with current refinements",
+    );
   });
 
   it("treats every topic equally and combines searchable topic and teacher refinements", async () => {

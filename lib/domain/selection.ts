@@ -8,12 +8,17 @@ export interface RandomSelection {
 }
 
 export function filterTalks(talks: Talk[], filters: SelectionFilters): Talk[] {
+  const teacherIds = filters.teacherIds === undefined ? null : new Set(filters.teacherIds);
   return talks.filter((talk) => {
     if (filters.kind !== "all" && talk.kind !== filters.kind) {
       return false;
     }
 
     if (filters.teacherId !== null && !talk.teacherIds.includes(filters.teacherId)) {
+      return false;
+    }
+
+    if (teacherIds && !talk.teacherIds.some((id) => teacherIds.has(id))) {
       return false;
     }
 
